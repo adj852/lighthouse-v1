@@ -32,6 +32,35 @@ Lighthouse helps you diagnose, understand, and fix common Arch Linux problems th
 - Python 3.10+
 - Arch Linux (recommended, but not strictly required)
 
+🛣️ Roadmap
+
+v1
+
+ - Core CLI
+
+ - Interactive flows
+
+ - Search & help
+
+ - Validator
+
+v2 (planned)
+
+ - Enforce full validation on all flows
+
+ - Normalize legacy guides
+
+ - Better categorization & metadata
+
+ - Optional TUI enhancements
+
+🌟 Philosophy
+
+Lighthouse does not fix your system for you.
+It helps you understand why something broke — and how to fix it correctly.
+
+“Stop guessing. Start understanding.”
+
 ### Run Lighthouse
 
 ```bash
