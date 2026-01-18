@@ -1,0 +1,138 @@
+start: boot_symptom
+nodes:
+  boot_symptom:
+    question: "What boot-related issue do you observe?"
+    options:
+      s: "System boots slowly"
+      h: "Hangs during boot"
+      r: "Reboots during boot"
+      n: "No issue, just curious"
+    next:
+      s: slow_boot
+      h: hang_boot
+      r: reboot_boot
+      n: overview_result
+  slow_boot:
+    question: "Analyze boot time?"
+    options:
+      y: "Yes"
+    next:
+      y: analyze
+  analyze:
+    question: "Inspect boot breakdown?"
+    options:
+      y: "Yes"
+    next:
+      y: analyze_result
+  analyze_result:
+    result:
+      - "View total boot time:"
+      - "systemd-analyze"
+  analyze_followup:
+    question: "Inspect slow services?"
+    options:
+      y: "Yes"
+    next:
+      y: blame
+  blame:
+    question: "List slow services?"
+    options:
+      y: "Yes"
+    next:
+      y: blame_result
+  blame_result:
+    result:
+      - "Identify slow services:"
+      - "systemd-analyze blame"
+      - "Top entries take the longest."
+  critical_chain:
+    question: "Inspect critical chain?"
+    options:
+      y: "Yes"
+    next:
+      y: critical_chain_result
+  critical_chain_result:
+    result:
+      - "Inspect dependency delays:"
+      - "systemd-analyze critical-chain"
+      - "Focus on services blocking default.target."
+  slow_boot_other:
+    result:
+      - "Common slow boot causes:"
+      - "Network timeouts"
+      - "Disk checks"
+      - "Missing devices in fstab"
+  hang_boot:
+    question: "Does it hang at a specific service?"
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: identify_service
+      n: hang_stage
+  identify_service:
+    question: "Inspect problematic service?"
+    options:
+      y: "Yes"
+    next:
+      y: identify_service_result
+  identify_service_result:
+    result:
+      - "Inspect service:"
+      - "systemctl status SERVICE"
+      - "journalctl -u SERVICE"
+      - "Disable only if safe."
+  hang_stage:
+    question: "Which stage does it hang at?"
+    options:
+      k: "Kernel / early boot"
+      i: "Initramfs"
+      u: "Userspace (systemd)"
+      g: "Graphical login"
+    next:
+      k: hang_kernel
+      i: hang_initramfs
+      u: hang_userspace
+      g: hang_graphics
+  hang_kernel:
+    result:
+      - "Kernel-stage hangs may be driver related."
+      - "Try booting with nomodeset or disabling splash."
+  hang_initramfs:
+    result:
+      - "Often caused by missing root device."
+      - "Verify UUIDs and rebuild initramfs."
+  hang_userspace:
+    result:
+      - "Userspace hangs usually involve services or mounts."
+      - "Check journalctl -xb."
+  hang_graphics:
+    result:
+      - "Graphical hangs often involve GPU drivers."
+      - "Switch to TTY or try a different display manager."
+  hang_generic_result:
+    result:
+      - "If hang is unclear:"
+      - "Remove quiet/splash"
+      - "Add loglevel=3 to kernel parameters"
+  reboot_boot:
+    question: "Reboot occurs after kernel loads?"
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: reboot_kernel
+      n: reboot_firmware
+  reboot_kernel:
+    result:
+      - "Likely kernel panic or watchdog reset."
+      - "Boot older kernel or check logs."
+  reboot_firmware:
+    result:
+      - "Firmware or power issue."
+      - "Check thermals, PSU, and BIOS settings."
+  overview_result:
+    result:
+      - "Linux boot phases:"
+      - "Firmware → Bootloader → Kernel → Initramfs → systemd userspace"
+      - "Most boot problems occur in one of these stages."

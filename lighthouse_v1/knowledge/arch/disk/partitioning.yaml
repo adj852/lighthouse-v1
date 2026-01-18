@@ -1,0 +1,163 @@
+start: partition_goal
+nodes:
+  partition_goal:
+    question: >
+      Partitioning defines how your disk is divided.
+      This step can permanently destroy data if done incorrectly.
+      Why are you partitioning a disk?
+    options:
+      n: "New Arch Linux installation"
+      r: "Repartition an existing system"
+      a: "Add an additional disk"
+    next:
+      n: install_type
+      r: repartition_check
+      a: add_disk
+  install_type:
+    question: >
+      What firmware does your system use?
+    options:
+      u: "UEFI (most modern systems)"
+      b: "Legacy BIOS"
+    next:
+      u: uefi_scheme
+      b: bios_scheme
+  uefi_scheme:
+    question: >
+      UEFI systems should always use GPT.
+      Do you want to continue with a GPT layout?
+    options:
+      y: "Yes"
+    next:
+      y: uefi_layout
+  uefi_layout:
+    question: >
+      How complex do you want your layout to be?
+    options:
+      s: "Simple (recommended)"
+      a: "Advanced (more control)"
+    next:
+      s: simple_uefi
+      a: advanced_uefi
+  simple_uefi:
+    result:
+      - description: >
+          Simple layouts are easier to manage and harder to break.
+      - description: >
+          Typical layout:
+          - EFI System Partition (ESP)
+          - Root (/)
+  advanced_uefi:
+    question: >
+      Do you want a separate /home partition?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: advanced_home
+      n: advanced_no_home
+  advanced_home:
+    question: >
+      Do you want swap as a partition?
+    options:
+      y: "Yes"
+      n: "No (use swapfile)"
+    next:
+      y: advanced_swap
+      n: advanced_no_swap
+  advanced_no_home:
+    result:
+      - description: >
+          Use a single root (/) partition.
+      - description: >
+          Example:
+      - description: "Layout"
+        command: |
+          /dev/sda1  EFI System Partition
+          /dev/sda2  /
+  advanced_swap:
+    result:
+      - description: >
+          Advanced layout:
+          - EFI System Partition
+          - Root (/)
+          - Home (/home)
+          - Swap partition
+  advanced_no_swap:
+    result:
+      - description: >
+          Advanced layout without swap partition.
+      - description: >
+          A swapfile can be added later.
+  bios_scheme:
+    question: >
+      Which partition table do you want?
+    options:
+      m: "MBR"
+      g: "GPT with BIOS boot partition"
+    next:
+      m: bios_mbr
+      g: bios_gpt
+  bios_mbr:
+    result:
+      - description: >
+          MBR works on legacy BIOS systems.
+      - description: >
+          Common layout:
+          - Root (/)
+          - Optional swap
+  bios_gpt:
+    question: >
+      Do you already have a BIOS boot partition?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: bios_gpt_ok
+      n: bios_gpt_missing
+  bios_gpt_ok:
+    result:
+      - description: >
+          BIOS boot partition is required for GRUB on GPT.
+  bios_gpt_missing:
+    result:
+      - description: >
+          Create a 1–2 MiB bios_grub partition before installing GRUB.
+  repartition_check:
+    question: >
+      Is all important data backed up?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: repartition_safe
+      n: repartition_warning
+  repartition_safe:
+    result:
+      - description: >
+          Proceed carefully.
+      - description: >
+          Unmount partitions and disable swap first.
+  repartition_warning:
+    result:
+      - description: >
+          Stop now.
+      - description: >
+          Repartitioning without backups causes data loss.
+  add_disk:
+    question: >
+      How will the new disk be used?
+    options:
+      d: "Data storage only"
+      s: "System expansion"
+    next:
+      d: data_disk
+      s: system_disk
+  data_disk:
+    result:
+      - description: >
+          One large partition is usually sufficient.
+  system_disk:
+    result:
+      - description: >
+          Update fstab, initramfs, and bootloader as needed.

@@ -1,0 +1,164 @@
+start: pulse_context
+nodes:
+  pulse_context:
+    question: >
+      Hi 🙂 PulseAudio used to be the standard sound server on Arch.
+      Today, it's mostly legacy, but still appears in older setups,
+      minimal systems, or during PipeWire migrations.
+      Why are you dealing with PulseAudio?
+    options:
+      l: "I'm on a legacy system or minimal setup"
+      c: "PipeWire and PulseAudio are conflicting"
+      t: "I'm troubleshooting an existing PulseAudio setup"
+      m: "I want to migrate cleanly to PipeWire"
+    next:
+      l: legacy_check
+      c: conflict_check
+      t: troubleshooting_check
+      m: migrate_pipewire
+  legacy_check:
+    question: >
+      Do you intentionally want to keep using PulseAudio?
+    options:
+      y: "Yes, I want to keep it"
+      n: "No, I want to move forward"
+    next:
+      y: legacy_keep
+      n: migrate_pipewire
+  legacy_keep:
+    result:
+      - description: >
+          PulseAudio is stable and still works,
+          but it is no longer the recommended default on Arch.
+      - description: >
+          You should only keep it if:
+          - You rely on very old software
+          - You run a minimal system without PipeWire
+      - description: >
+          If PulseAudio works, there is no urgent need to change.
+  migrate_pipewire:
+    question: >
+      Are you ready to replace PulseAudio with PipeWire?
+      This is the recommended setup on modern Arch.
+    options:
+      y: "Yes"
+      n: "Not yet"
+    next:
+      y: migrate_pipewire_steps
+      n: migration_note
+  migrate_pipewire_steps:
+    result:
+      - description: >
+          Install PipeWire and compatibility layers:
+        command: "sudo pacman -S pipewire pipewire-pulse wireplumber"
+      - description: >
+          Stop PulseAudio:
+        command: "systemctl --user stop pulseaudio.socket pulseaudio.service"
+      - description: >
+          Enable PipeWire replacements:
+        command: "systemctl --user enable --now pipewire pipewire-pulse wireplumber"
+      - description: >
+          Reboot to ensure a clean transition.
+  migration_note:
+    result:
+      - description: >
+          You can safely migrate later.
+          PulseAudio and PipeWire should never run
+          as primary servers at the same time.
+  conflict_check:
+    question: >
+      Are both PulseAudio and PipeWire running at the same time?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: resolve_conflict
+      n: no_conflict_found
+  resolve_conflict:
+    result:
+      - description: >
+          Only one sound server should manage audio.
+      - description: >
+          If using PipeWire, remove PulseAudio:
+        command: "sudo pacman -R pulseaudio pulseaudio-alsa"
+      - description: >
+          PipeWire provides PulseAudio compatibility automatically
+          via pipewire-pulse.
+  no_conflict_found:
+    result:
+      - description: >
+          No direct conflict detected.
+          If sound issues remain, check routing or ALSA backend.
+  troubleshooting_check:
+    question: >
+      What problem are you experiencing?
+    options:
+      n: "No sound at all"
+      c: "Crackling, distortion, or lag"
+      d: "Wrong output or input device"
+    next:
+      n: no_sound_pulse
+      c: crackling_pulse
+      d: device_pulse
+  no_sound_pulse:
+    question: >
+      Is the PulseAudio daemon running?
+      Check with:
+        pulseaudio --check
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: sinks_sources_check
+      n: restart_pulseaudio
+  restart_pulseaudio:
+    result:
+      - description: >
+          Restart PulseAudio:
+        command: "pulseaudio -k"
+      - description: >
+          It should auto-start again for your user.
+  sinks_sources_check:
+    result:
+      - description: >
+          List output devices (sinks):
+        command: "pactl list short sinks"
+      - description: >
+          List input devices (sources):
+        command: "pactl list short sources"
+      - description: >
+          Ensure the correct device is set as default.
+  crackling_pulse:
+    result:
+      - description: >
+          Crackling is often caused by resampling or latency issues.
+      - description: >
+          Try increasing buffer size in PulseAudio config:
+      - description: |
+          default-fragments = 8
+          default-fragment-size-msec = 10
+      - description: >
+          Restart PulseAudio after changes:
+        command: "pulseaudio -k"
+  device_pulse:
+    result:
+      - description: >
+          Use a volume control tool to select devices:
+        command: "pavucontrol"
+      - description: >
+          Make sure applications are routed
+          to the correct sink.
+  pulse_logs:
+    result:
+      - description: >
+          Run PulseAudio in verbose mode for debugging:
+        command: "pulseaudio -vv"
+      - description: >
+          Look for module loading or device errors.
+  pulse_wrapup:
+    result:
+      - description: >
+          PulseAudio is functioning as expected.
+      - description: >
+          For long-term use on Arch,
+          migrating to PipeWire is strongly recommended.

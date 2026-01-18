@@ -1,0 +1,228 @@
+start: fs_choice
+nodes:
+  fs_choice:
+    question: >
+      Filesystems define how data is stored and managed.
+      What is this filesystem used for?
+    options:
+      r: "Root filesystem (/)"
+      h: "Home or general data storage"
+      e: "EFI System Partition (ESP)"
+      l: "Learn filesystem concepts first"
+    next:
+      r: root_fs
+      h: data_fs
+      e: efi_fs
+      l: fs_overview
+  fs_overview:
+    result:
+      - description: >
+          A filesystem determines:
+          - Performance
+          - Reliability
+          - Recovery options
+          - Maintenance complexity
+      - description: >
+          Arch Linux supports many filesystems,
+          but ext4 and Btrfs are the most common.
+      - description: >
+          No filesystem is "best" for everyone —
+          each has trade-offs.
+  root_fs:
+    question: >
+      What characteristics do you prefer for the root filesystem?
+    options:
+      s: "Simple, stable, minimal maintenance"
+      f: "Snapshots, rollback, advanced features"
+    next:
+      s: ext4_root
+      f: btrfs_root
+  ext4_root:
+    result:
+      - description: >
+          ext4 is the default Linux filesystem.
+      - description: >
+          Strengths:
+          - Extremely stable
+          - Mature and well-tested
+          - Minimal administration
+      - description: >
+          Weaknesses:
+          - No native snapshots
+          - No built-in compression
+      - description: >
+          Recommended for:
+          - Beginners
+          - Servers
+          - Systems where reliability > features
+  btrfs_root:
+    question: >
+      Are you familiar with Btrfs subvolumes and snapshots?
+    options:
+      y: "Yes, I know how it works"
+      n: "No or not really"
+    next:
+      y: btrfs_use
+      n: btrfs_warn
+  btrfs_use:
+    question: "Why do you want Btrfs?"
+    options:
+      s: "System snapshots / rollback"
+      c: "Compression to save space"
+      b: "Both"
+    next:
+      s: btrfs_snapshots
+      c: btrfs_compression
+      b: btrfs_both
+  btrfs_snapshots:
+    result:
+      - description: >
+          Btrfs snapshots allow rolling back system state.
+      - description: >
+          Common tools:
+          - snapper
+          - timeshift
+      - description: >
+          Very useful before system upgrades.
+      - description: >
+          Requires careful subvolume layout.
+  btrfs_compression:
+    result:
+      - description: >
+          Btrfs supports transparent compression.
+      - description: >
+          Common algorithms:
+          - zstd (recommended)
+      - description: >
+          Benefits:
+          - Faster I/O on SSDs
+          - Reduced disk usage
+  btrfs_both:
+    result:
+      - description: >
+          Combining snapshots and compression is common.
+      - description: >
+          This setup is powerful but increases complexity.
+      - description: >
+          Maintenance is your responsibility.
+  btrfs_warn:
+    result:
+      - description: >
+          Btrfs is not unsafe, but it is complex.
+      - description: >
+          Common beginner mistakes:
+          - Poor subvolume layout
+          - No snapshot cleanup
+          - Misunderstanding rollback scope
+      - description: >
+          If unsure, ext4 is safer.
+  data_fs:
+    question: >
+      What kind of data will this filesystem store?
+    options:
+      g: "General files (documents, configs)"
+      l: "Large files (media, backups)"
+      s: "SSD-heavy workload"
+    next:
+      g: ext4_data
+      l: xfs_data
+      s: ssd_fs
+  ext4_data:
+    result:
+      - description: >
+          ext4 is flexible and reliable for data storage.
+      - description: >
+          Supports:
+          - Resizing
+          - Wide tool support
+      - description: >
+          Good default for /home and mixed workloads.
+  xfs_data:
+    result:
+      - description: >
+          XFS excels at large files and parallel I/O.
+      - description: >
+          Commonly used for:
+          - Media storage
+          - Databases
+          - Servers
+      - description: >
+          Limitations:
+          - Cannot shrink filesystems
+          - Less forgiving of corruption
+  ssd_fs:
+    question: "Do you want compression?"
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: btrfs_ssd
+      n: ext4_ssd
+  btrfs_ssd:
+    result:
+      - description: >
+          Btrfs works very well on SSDs.
+      - description: >
+          Compression reduces write amplification.
+      - description: >
+          Snapshots are nearly instant.
+  ext4_ssd:
+    result:
+      - description: >
+          ext4 is SSD-safe and reliable.
+      - description: >
+          Use periodic TRIM for best performance.
+  efi_fs:
+    result:
+      - description: >
+          The EFI System Partition (ESP) must use FAT32.
+      - description: >
+          This is required by the UEFI specification.
+      - description: >
+          Common mount points:
+          - /boot
+          - /efi
+      - description: >
+          ESP should remain unencrypted.
+  encryption_fs:
+    question: "Are you using disk encryption?"
+    options:
+      y: "Yes (LUKS)"
+      n: "No"
+    next:
+      y: fs_encryption
+      n: fs_no_encrypt
+  fs_encryption:
+    result:
+      - description: >
+          Most Linux filesystems work inside LUKS.
+      - description: >
+          ext4 and Btrfs are most commonly used.
+      - description: >
+          Encryption is filesystem-agnostic.
+  fs_no_encrypt:
+    result:
+      - description: >
+          Filesystem choice does not affect encryption ability.
+      - description: >
+          Encryption happens below the filesystem layer.
+  fs_backup:
+    result:
+      - description: >
+          Filesystems are not backups.
+      - description: >
+          Snapshots ≠ backups.
+      - description: >
+          Always maintain external backups.
+      - description: >
+          Btrfs snapshots help recovery,
+          but do not protect against disk failure.
+  fs_summary:
+    result:
+      - description: >
+          Recommended defaults:
+          - Root: ext4 or Btrfs
+          - Home/Data: ext4 or XFS
+          - ESP: FAT32
+      - description: >
+          Choose simplicity unless you need features.

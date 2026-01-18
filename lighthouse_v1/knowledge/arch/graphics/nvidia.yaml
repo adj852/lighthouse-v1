@@ -1,0 +1,212 @@
+start: nvidia_issue
+nodes:
+  nvidia_issue:
+    question: >
+      NVIDIA can be a bit tricky on Linux.
+      What issue are you running into?
+    options:
+      b: "Black screen (no display)"
+      w: "Wayland not working"
+      p: "Poor performance or low FPS"
+      s: "Suspend / resume problems"
+    next:
+      b: black_screen
+      w: wayland
+      p: performance
+      s: suspend
+  black_screen:
+    question: >
+      When did the black screen start happening?
+    options:
+      i: "Immediately after installing NVIDIA driver"
+      u: "After a system or kernel update"
+      a: "Randomly or on boot"
+    next:
+      i: modeset
+      u: kernel_mismatch
+      a: generic_black_screen
+  modeset:
+    result:
+      - description: >
+          NVIDIA requires DRM modesetting for modern desktops.
+      - description: >
+          Add this kernel parameter:
+          nvidia_drm.modeset=1
+      - description: >
+          This enables:
+          - Smooth boot
+          - Wayland support
+          - Proper display initialization
+      - description: >
+          After adding the parameter:
+          - Regenerate bootloader config
+          - Reboot
+  kernel_mismatch:
+    result:
+      - description: >
+          A very common cause: kernel and NVIDIA driver mismatch.
+      - description: >
+          This happens when:
+          - Kernel updates
+          - NVIDIA modules were not rebuilt
+      - description: >
+          Ensure:
+          - Kernel headers are installed
+          - Correct NVIDIA package is used
+      - description: >
+          If using custom kernels, use nvidia-dkms.
+      - description: >
+          Rebuild initramfs and reboot.
+  generic_black_screen:
+    result:
+      - description: >
+          Other common causes of black screens:
+      - description: >
+          - Missing initramfs rebuild
+          - Incorrect GPU selected (hybrid systems)
+          - Wayland session failing silently
+      - description: >
+          Try switching to a TTY (Ctrl+Alt+F2).
+      - description: >
+          Check logs:
+          - journalctl -b
+          - Xorg.0.log (if using X11)
+  wayland:
+    question: >
+      What happens when you try to use Wayland?
+    options:
+      s: "Wayland session does not appear"
+      f: "Wayland session fails to start"
+      l: "Wayland works but is buggy"
+    next:
+      s: wayland_missing
+      f: wayland_fail
+      l: wayland_buggy
+  wayland_missing:
+    result:
+      - description: >
+          Wayland requires NVIDIA driver 515 or newer.
+      - description: >
+          Ensure DRM modesetting is enabled.
+      - description: >
+          Some display managers hide Wayland if unsupported.
+      - description: >
+          GNOME and KDE Plasma offer the best NVIDIA Wayland support.
+  wayland_fail:
+    result:
+      - description: >
+          Wayland failures often mean:
+          - Missing modeset
+          - Old NVIDIA driver
+          - Unsupported compositor
+      - description: >
+          Check session logs for explicit errors.
+      - description: >
+          Falling back to X11 is normal if Wayland is unstable.
+  wayland_buggy:
+    result:
+      - description: >
+          NVIDIA Wayland support is improving but not perfect.
+      - description: >
+          Common issues:
+          - Flickering
+          - Stutter
+          - Broken screen capture
+      - description: >
+          If stability matters, X11 may still be the better choice.
+  performance:
+    question: >
+      What kind of performance problem are you seeing?
+    options:
+      l: "Low FPS"
+      c: "GPU not being used"
+      t: "Thermal throttling or low clocks"
+    next:
+      l: low_fps
+      c: gpu_unused
+      t: clocks
+  low_fps:
+    result:
+      - description: >
+          Ensure applications are actually using the NVIDIA GPU.
+      - description: >
+          On hybrid systems, use:
+          prime-run <application>
+      - description: >
+          Verify with:
+          nvidia-smi
+  gpu_unused:
+    result:
+      - description: >
+          If nvidia-smi shows no running processes:
+          - The app is using the integrated GPU.
+      - description: >
+          PRIME offloading must be used explicitly.
+      - description: >
+          Desktop environments do not auto-switch GPUs.
+  clocks:
+    result:
+      - description: >
+          NVIDIA may run at low power states by default.
+      - description: >
+          Use nvidia-smi to inspect:
+          - Power state
+          - Clocks
+      - description: >
+          Laptop users should expect dynamic clock changes.
+  suspend:
+    question: >
+      What happens after suspend?
+    options:
+      b: "Black screen after resume"
+      f: "System freezes"
+      g: "GPU stops responding"
+    next:
+      b: suspend_black
+      f: suspend_freeze
+      g: suspend_gpu
+  suspend_black:
+    result:
+      - description: >
+          NVIDIA requires special systemd services for suspend.
+      - description: >
+          Ensure these services are enabled:
+          - nvidia-suspend.service
+          - nvidia-resume.service
+          - nvidia-hibernate.service
+      - description: >
+          These are usually provided by the NVIDIA package.
+  suspend_freeze:
+    result:
+      - description: >
+          Freezes may indicate:
+          - Driver bugs
+          - Kernel incompatibility
+      - description: >
+          Try:
+          - LTS kernel
+          - Updating NVIDIA driver
+      - description: >
+          Some hardware combinations remain problematic.
+  suspend_gpu:
+    result:
+      - description: >
+          GPU hangs after resume are common on NVIDIA laptops.
+      - description: >
+          Disabling suspend or using hibernate may be more reliable.
+      - description: >
+          Check Arch Wiki for device-specific quirks.
+  nvidia_notes:
+    result:
+      - description: >
+          NVIDIA on Linux works well, but requires careful setup.
+      - description: >
+          Most issues come from:
+          - Kernel/driver mismatch
+          - Missing initramfs rebuild
+          - Hybrid GPU confusion
+      - description: >
+          When in doubt:
+          - Read logs
+          - Check Arch Wiki
+          - Change one thing at a time

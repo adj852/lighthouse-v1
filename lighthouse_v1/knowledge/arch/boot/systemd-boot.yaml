@@ -1,0 +1,250 @@
+start: sdb_issue
+nodes:
+  sdb_issue:
+    question: >
+      systemd-boot is a simple UEFI-only boot manager.
+      What issue are you experiencing?
+    options:
+      m: "No boot entries appear"
+      d: "Wrong default entry boots"
+      k: "Kernel not updating"
+      f: "Boot failure"
+      s: "Secure Boot issues"
+    next:
+      m: entries_missing
+      d: default_entry
+      k: kernel_update
+      f: boot_fail
+      s: secure_boot
+  entries_missing:
+    question: "Is the EFI System Partition mounted correctly?"
+    options:
+      y: "Yes, mounted at /boot or /efi"
+      n: "No or not sure"
+    next:
+      y: entries_check
+      n: esp_fix
+  esp_fix:
+    result:
+      - description: >
+          systemd-boot requires a mounted EFI System Partition (ESP).
+      - description: >
+          Common mount points:
+          - /boot (recommended)
+          - /efi
+      - description: >
+          Verify with: mount | grep efi
+  entries_check:
+    question: "Are .conf files present in loader/entries/?"
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: loader_conf
+      n: entries_absent
+  entries_absent:
+    result:
+      - description: >
+          systemd-boot does NOT auto-generate entries.
+      - description: >
+          Each kernel requires its own entry file:
+          - /boot/loader/entries/*.conf
+      - description: >
+          Entry filenames must end in .conf.
+  loader_conf:
+    question: "Do you want to inspect loader.conf?"
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: loader_details
+      n: entries_valid
+  loader_details:
+    result:
+      - description: >
+          loader.conf controls global behavior.
+      - description: >
+          Common options:
+          - default arch.conf
+          - timeout 3
+          - editor no
+      - description: >
+          The default value must match the entry filename exactly.
+  entries_valid:
+    result:
+      - description: >
+          If entries exist but do not appear:
+          - Verify ESP is FAT32
+          - Ensure correct directory layout:
+            /boot/EFI/systemd/systemd-bootx64.efi
+            /boot/loader/entries/
+  default_entry:
+    question: "Does loader.conf reference an existing entry filename?"
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: default_other
+      n: default_fix
+  default_fix:
+    result:
+      - description: >
+          systemd-boot matches entries by filename, not title.
+      - description: >
+          Ensure loader.conf default matches:
+          - arch.conf ≠ Arch Linux.conf
+  default_other:
+    question: "Does firmware always override the default?"
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: firmware_order
+      n: default_ok
+  firmware_order:
+    result:
+      - description: >
+          Firmware boot order may override defaults.
+      - description: >
+          Verify EFI boot order using:
+          - efibootmgr -v
+      - description: >
+          systemd-boot must be first in boot order.
+  default_ok:
+    result:
+      - description: >
+          If the wrong entry boots intermittently:
+          - Disable loader auto-entries if undesired
+          - Review firmware boot options
+  kernel_update:
+    question: "Which boot method do you use?"
+    options:
+      u: "Unified Kernel Images (UKI)"
+      t: "Traditional kernel + initramfs"
+    next:
+      u: uki
+      t: traditional_kernel
+  traditional_kernel:
+    question: "Do entry files reference versioned kernel paths?"
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: kernel_path_issue
+      n: hooks_missing
+  kernel_path_issue:
+    result:
+      - description: >
+          systemd-boot does not track kernel updates.
+      - description: >
+          Entry files must point to stable paths:
+          - vmlinuz-linux
+          - initramfs-linux.img
+      - description: >
+          Avoid versioned filenames.
+  hooks_missing:
+    result:
+      - description: >
+          pacman hooks can automate entry updates.
+      - description: >
+          Consider switching to UKI for simplicity.
+  uki:
+    question: "Is the UKI rebuilt after kernel updates?"
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: uki_ok
+      n: uki_fix
+  uki_ok:
+    result:
+      - description: >
+          UKI provides a single EFI executable per kernel.
+      - description: >
+          Ensure mkinitcpio preset outputs to ESP.
+      - description: >
+          Verify EFI binary exists after updates.
+  uki_fix:
+    result:
+      - description: >
+          UKI requires:
+          - systemd initramfs
+          - correct mkinitcpio preset
+          - proper output path
+      - description: >
+          Check /etc/mkinitcpio.d/*.preset
+  boot_fail:
+    question: "What happens during boot?"
+    options:
+      r: "Returns to firmware menu"
+      b: "Black screen"
+      e: "Error message shown"
+    next:
+      r: efi_entry_missing
+      b: black_screen
+      e: boot_error
+  efi_entry_missing:
+    result:
+      - description: >
+          The EFI boot entry may be missing or corrupted.
+      - description: >
+          Reinstall systemd-boot to recreate entries.
+      - description: "Reinstall systemd-boot:"
+        command: "bootctl install"
+  black_screen:
+    result:
+      - description: >
+          Black screen may indicate:
+          - GPU kernel mode setting issues
+          - Missing initramfs or kernel
+      - description: >
+          Remove quiet from kernel parameters.
+      - description: >
+          Test with fallback initramfs.
+  boot_error:
+    result:
+      - description: >
+          Inspect error messages carefully.
+      - description: >
+          Common causes:
+          - Wrong root= parameter
+          - Missing initramfs
+          - Incompatible initramfs hooks
+  secure_boot:
+    question: "Are you using Secure Boot?"
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: secure_boot_enabled
+      n: secure_boot_note
+  secure_boot_note:
+    result:
+      - description: >
+          Secure Boot is optional for systemd-boot.
+      - description: >
+          No special configuration required when disabled.
+  secure_boot_enabled:
+    question: "Are binaries properly signed?"
+    options:
+      y: "Yes"
+      n: "No / not sure"
+    next:
+      y: secure_ok
+      n: secure_fix
+  secure_ok:
+    result:
+      - description: >
+          Ensure all EFI binaries are signed:
+          - systemd-boot
+          - kernel or UKI
+      - description: >
+          Unsigned binaries will not boot.
+  secure_fix:
+    result:
+      - description: >
+          Secure Boot requires:
+          - sbctl or manual signing
+          - Enrolled keys in firmware
+      - description: >
+          UKI greatly simplifies Secure Boot setups.

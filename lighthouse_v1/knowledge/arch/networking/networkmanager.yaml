@@ -1,0 +1,160 @@
+start: nm_context
+nodes:
+  nm_context:
+    question: >
+      NetworkManager is a general-purpose network configuration daemon.
+      It manages Wi-Fi, Ethernet, VPNs, and mobile broadband.
+      What issue are you currently facing?
+    options:
+      s: "NetworkManager service not running"
+      w: "Wi-Fi not connecting"
+      e: "Ethernet not working"
+      c: "Connection drops or is unstable"
+    next:
+      s: service_state
+      w: wifi_issue
+      e: ethernet_issue
+      c: drops
+  service_state:
+    question: >
+      NetworkManager must be active to manage network interfaces.
+      Is the NetworkManager service running?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: nm_conflict
+      n: enable_nm
+  enable_nm:
+    result:
+      - description: >
+          Enable and start NetworkManager.
+        command: "sudo systemctl enable --now NetworkManager"
+      - description: >
+          Verify the service status.
+        command: "systemctl status NetworkManager"
+  nm_conflict:
+    question: >
+      NetworkManager expects to be the sole manager of network interfaces.
+      Are other network management services running?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: resolve_conflict
+      n: nm_ok
+  resolve_conflict:
+    result:
+      - description: >
+          Multiple network managers will conflict and must be removed.
+      - description: >
+          Disable or remove dhcpcd, netctl, standalone iwd, or manual wpa_supplicant services.
+      - description: >
+          Only NetworkManager should control network interfaces.
+  nm_ok:
+    result:
+      - description: >
+          NetworkManager is running without obvious service conflicts.
+  wifi_issue:
+    question: >
+      Does NetworkManager detect nearby Wi-Fi networks?
+    options:
+      y: "Yes, networks appear"
+      n: "No, nothing is listed"
+    next:
+      y: auth_issue
+      n: wifi_backend
+  wifi_backend:
+    question: >
+      NetworkManager uses a Wi-Fi backend for authentication.
+      Which backend is configured?
+    options:
+      w: "wpa_supplicant"
+      i: "iwd"
+    next:
+      w: wpa_ok
+      i: iwd_ok
+  wpa_ok:
+    result:
+      - description: >
+          wpa_supplicant must be installed and accessible.
+      - description: >
+          NetworkManager manages it automatically.
+      - description: >
+          Inspect NetworkManager logs.
+        command: "journalctl -u NetworkManager"
+  iwd_ok:
+    result:
+      - description: >
+          Configure NetworkManager to use iwd.
+      - description: >
+          Edit /etc/NetworkManager/NetworkManager.conf and set wifi.backend=iwd.
+      - description: >
+          Restart NetworkManager after making changes.
+        command: "sudo systemctl restart NetworkManager"
+  auth_issue:
+    question: >
+      Does the connection fail during authentication?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: auth_fix
+      n: wifi_unknown
+  auth_fix:
+    result:
+      - description: >
+          Authentication failures are commonly caused by incorrect passwords or WPA mismatches.
+      - description: >
+          Inspect authentication errors in logs.
+        command: "journalctl -u NetworkManager"
+  wifi_unknown:
+    result:
+      - description: >
+          Non-authentication Wi-Fi failures may indicate driver or firmware issues.
+      - description: >
+          Check firmware-related kernel messages.
+        command: "dmesg | grep firmware"
+  ethernet_issue:
+    question: >
+      Is the Ethernet link detected by the system?
+    options:
+      y: "Yes, link is detected"
+      n: "No, no link"
+    next:
+      y: eth_ip
+      n: eth_driver
+  eth_ip:
+    result:
+      - description: >
+          Verify that an IP address has been assigned.
+        command: "ip addr"
+      - description: >
+          Inspect NetworkManager device state.
+        command: "nmcli device show"
+  eth_driver:
+    result:
+      - description: >
+          No Ethernet link usually indicates a physical or driver issue.
+      - description: >
+          Inspect hardware and kernel messages.
+  drops:
+    question: >
+      Does the connection drop intermittently or under load?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: drop_causes
+      n: stable
+  drop_causes:
+    result:
+      - description: >
+          Unstable connections are often caused by power saving or buggy drivers.
+      - description: >
+          Disable Wi-Fi power saving.
+        command: "nmcli device set wlan0 power_save off"
+  stable:
+    result:
+      - description: >
+          The connection appears stable and no NetworkManager issue is detected.

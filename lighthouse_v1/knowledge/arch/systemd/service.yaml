@@ -1,0 +1,198 @@
+start: service_goal
+nodes:
+  service_goal:
+    question: "What are you trying to do with a systemd service?"
+    options:
+      s: "Start or stop a service"
+      e: "Enable or disable at boot"
+      f: "Service fails to start"
+      d: "Inspect dependencies or ordering"
+      o: "Override or customize behavior"
+      i: "Inspect service status or unit file"
+    next:
+      s: start_stop
+      e: enable_disable
+      f: failure
+      d: dependencies
+      o: override
+      i: inspect
+  start_stop:
+    question: "Is the service already running?"
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: stop_confirm
+      n: start_confirm
+  start_confirm:
+    question: "Start the service now?"
+    options:
+      y: "Yes"
+    next:
+      y: start_result
+  start_result:
+    result:
+      - "Start the service immediately:"
+      - "systemctl start service"
+      - "Use status to confirm it is running."
+  stop_confirm:
+    question: "Stop the service?"
+    options:
+      y: "Yes"
+    next:
+      y: stop_result
+  stop_result:
+    result:
+      - "Stop the service:"
+      - "systemctl stop service"
+  enable_disable:
+    question: "Should the service start at boot?"
+    options:
+      y: "Enable"
+      n: "Disable"
+      m: "Mask (prevent start)"
+    next:
+      y: enable_confirm
+      n: disable_confirm
+      m: mask_confirm
+  enable_confirm:
+    question: "Enable service?"
+    options:
+      y: "Yes"
+    next:
+      y: enable_result
+  enable_result:
+    result:
+      - "Enable the service at boot:"
+      - "systemctl enable service"
+  disable_confirm:
+    question: "Disable service?"
+    options:
+      y: "Yes"
+    next:
+      y: disable_result
+  disable_result:
+    result:
+      - "Disable the service at boot:"
+      - "systemctl disable service"
+  mask_confirm:
+    result:
+      - "Mask the service (strong disable):"
+      - "systemctl mask service"
+      - "Prevents manual or automatic starts."
+  inspect:
+    question: "What do you want to inspect?"
+    options:
+      s: "Service status"
+      u: "Unit file contents"
+      p: "Preset state"
+    next:
+      s: inspect_status
+      u: inspect_unit
+      p: inspect_preset
+  inspect_status:
+    result:
+      - "Inspect service status:"
+      - "systemctl status service"
+      - "Shows state, PID, exit code, recent logs."
+  inspect_unit:
+    result:
+      - "View merged unit file (including overrides):"
+      - "systemctl cat service"
+  inspect_preset:
+    result:
+      - "Check preset policy:"
+      - "systemctl preset-status service"
+      - "Presets define default enable/disable behavior."
+  failure:
+    question: "Does the service fail immediately?"
+    options:
+      y: "Yes"
+      n: "No, it times out or restarts"
+    next:
+      y: immediate_fail
+      n: delayed_fail
+  immediate_fail:
+    question: "Inspect status and logs?"
+    options:
+      y: "Yes"
+    next:
+      y: immediate_fail_result
+  immediate_fail_result:
+    result:
+      - "Inspect service status:"
+      - "systemctl status service"
+      - "Inspect logs:"
+      - "journalctl -u service -b"
+      - "Check ExecStart path and permissions."
+  delayed_fail:
+    question: "Is Restart= configured?"
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: restart_configured
+      n: restart_missing
+  restart_configured:
+    result:
+      - "Inspect restart behavior:"
+      - "systemctl cat service"
+      - "Check Restart= and TimeoutStartSec=."
+  restart_missing:
+    result:
+      - "Service may exit without retrying."
+      - "Consider adding Restart= via override."
+  dependencies:
+    question: "Inspect which aspect?"
+    options:
+      r: "Required dependencies"
+      o: "Ordering (Before/After)"
+      w: "Why it started"
+    next:
+      r: required
+      o: ordering
+      w: why_started
+  required:
+    result:
+      - "List dependencies:"
+      - "systemctl list-dependencies service"
+      - "Use --reverse to see dependents."
+  ordering:
+    result:
+      - "Inspect ordering relationships:"
+      - "systemctl cat service"
+      - "Look for After= and Before= directives."
+  why_started:
+    result:
+      - "Explain why a service was started:"
+      - "systemctl show service -p TriggeredBy -p WantedBy"
+  override:
+    question: "What do you want to override?"
+    options:
+      e: "Environment variables"
+      r: "Restart behavior"
+      c: "ExecStart command"
+    next:
+      e: override_env
+      r: override_restart
+      c: override_exec
+  override_env:
+    result:
+      - "Edit service environment safely:"
+      - "systemctl edit service"
+      - "Add Environment= or EnvironmentFile=."
+  override_restart:
+    result:
+      - "Override restart behavior:"
+      - "systemctl edit service"
+      - "Example: Restart=on-failure"
+  override_exec:
+    result:
+      - "Override ExecStart:"
+      - "Use systemctl edit service"
+      - "You must first reset ExecStart=."
+  override_note:
+    result:
+      - "Overrides are stored in:"
+      - "/etc/systemd/system/service.d/*.conf"
+      - "Run systemctl daemon-reload after changes."

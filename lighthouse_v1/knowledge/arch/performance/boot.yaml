@@ -1,0 +1,134 @@
+start: boot_goal
+nodes:
+  boot_goal:
+    question: >
+      Boot optimization means different things depending on
+      where the delay happens.
+      What is your main goal?
+    options:
+      s: "My system boots slowly"
+      a: "I want to analyze boot time"
+      o: "I want to optimize startup services"
+    next:
+      s: slow_boot
+      a: analyze_intro
+      o: optimize_intro
+  slow_boot:
+    question: >
+      Where does the delay happen?
+      This helps narrow things down quickly.
+    options:
+      y: "After the bootloader, before login"
+      n: "Before Linux starts (firmware / bootloader)"
+    next:
+      y: userspace
+      n: firmware
+  firmware:
+    result:
+      - description: >
+          Firmware (BIOS/UEFI) delays happen before Linux starts.
+          Linux and systemd cannot control this stage.
+          Common causes include long POST checks, PXE/network boot,
+          or probing USB and optical devices.
+          If the delay occurs before the bootloader menu appears,
+          it is almost always firmware-related.
+          Possible actions:
+          - Disable unused boot devices
+          - Disable PXE / network boot
+          - Enable fast boot if available
+  userspace:
+    question: >
+      The delay happens after Linux starts.
+      This usually involves systemd services.
+      Do you want to analyze userspace boot time?
+    options:
+      y: "Yes"
+    next:
+      y: analyze_intro
+  analyze_intro:
+    question: >
+      systemd provides built-in tools to analyze boot performance.
+      These tools are safe and read-only.
+      Do you want to run them?
+    options:
+      y: "Yes"
+    next:
+      y: analyze
+  analyze:
+    result:
+      - description: >
+          Measure total boot time including firmware, bootloader,
+          kernel, and userspace.
+          Focus primarily on the userspace time,
+          as that is where optimization is usually possible.
+        command: "systemd-analyze"
+  blame_hint:
+    question: >
+      Want to see which services take the longest to start?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: blame
+      n: critical_chain_intro
+  blame:
+    result:
+      - description: >
+          List services ordered by startup time.
+          Important notes:
+          - A slow service is not always a problem
+          - Some services wait on hardware or networking
+          - Startup time does not equal importance
+        command: "systemd-analyze blame"
+  critical_chain_intro:
+    question: >
+      Want to understand service dependencies?
+      This shows what actually blocks the boot process.
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: critical_chain
+      n: optimize_intro
+  critical_chain:
+    result:
+      - description: >
+          Show the critical boot path and dependency chain.
+          This is often more useful than blame,
+          because it shows what actually delays reaching login.
+        command: "systemd-analyze critical-chain"
+  optimize_intro:
+    question: >
+      Optimization means disabling or adjusting services.
+      This must be done carefully.
+      Do you want to continue?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: optimize
+      n: finish_safe
+  optimize:
+    result:
+      - description: >
+          Rules for safe optimization:
+          ✔ Disable services you recognize and do not use  
+          ✔ Prefer disabling over masking  
+          ✔ Test changes one at a time  
+          ⚠ Do NOT disable:
+          - systemd-logind
+          - dbus
+          - udev
+          - graphical.target
+          - multi-user.target
+          To disable a service:
+          sudo systemctl disable SERVICE
+          To stop it immediately (optional):
+          sudo systemctl stop SERVICE
+  finish_safe:
+    result:
+      - description: >
+          If you are unsure, do NOT disable services blindly.
+          A slightly slower boot is better than a broken system.
+          Arch Wiki recommendation:
+          Always understand what a service does before disabling it.

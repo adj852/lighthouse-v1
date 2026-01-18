@@ -1,0 +1,204 @@
+start: aur_goal
+nodes:
+  aur_goal:
+    question: >
+      Welcome to the AUR 🙂
+      The Arch User Repository is one of Arch Linux's greatest strengths,
+      but also where you take full responsibility.
+      What do you want to do with the AUR?
+    options:
+      i: "Install software not in official repositories"
+      u: "Update existing AUR packages"
+      l: "Learn how the AUR works (recommended)"
+      s: "Stay safe and avoid breaking my system"
+    next:
+      i: install_method
+      u: update_method
+      l: aur_model
+      s: aur_safety
+  aur_model:
+    result:
+      - description: >
+          The Arch User Repository (AUR) contains user-submitted PKGBUILDs.
+      - description: >
+          A PKGBUILD is a shell script that tells your system
+          how to build and install a package.
+      - description: >
+          AUR packages are NOT prebuilt binaries.
+          You build them locally.
+      - description: >
+          AUR content is NOT audited by Arch maintainers.
+      - description: >
+          This means:
+          - You must read PKGBUILDs
+          - You trust the maintainer at your own risk
+      - description: >
+          This freedom is powerful — and dangerous if ignored.
+  aur_safety:
+    question: >
+      How familiar are you with PKGBUILDs?
+    options:
+      b: "Beginner"
+      i: "I can read them but not write them"
+      a: "Advanced"
+    next:
+      b: aur_safety_beginner
+      i: aur_safety_intermediate
+      a: aur_safety_advanced
+  aur_safety_beginner:
+    result:
+      - description: >
+          As a beginner:
+          - Avoid random or unmaintained AUR packages
+          - Prefer popular packages with many votes
+      - description: >
+          Always inspect:
+          - source URLs
+          - install scripts
+          - post_install hooks
+      - description: >
+          Never blindly install packages from unknown maintainers.
+  aur_safety_intermediate:
+    result:
+      - description: >
+          You should:
+          - Check for suspicious commands (curl | sh, rm -rf)
+          - Understand prepare(), build(), package()
+      - description: >
+          Compare PKGBUILD changes when updating packages.
+  aur_safety_advanced:
+    result:
+      - description: >
+          You likely already know:
+          - How to modify PKGBUILDs
+          - How to build in clean chroots
+          - How to debug failed builds
+  install_method:
+    question: >
+      How do you want to install AUR packages?
+    options:
+      h: "Use an AUR helper (recommended)"
+      m: "Build manually from PKGBUILD"
+    next:
+      h: helper_choice
+      m: manual_install
+  helper_choice:
+    question: >
+      AUR helpers automate searching, building, and updating.
+      Which style do you prefer?
+    options:
+      y: "Simple and popular (yay)"
+      p: "More transparent and strict (paru)"
+      n: "I want to avoid helpers"
+    next:
+      y: helper_yay
+      p: helper_paru
+      n: manual_install
+  helper_yay:
+    result:
+      - description: >
+          yay is beginner-friendly and widely used.
+      - description: "Install yay"
+        command: "sudo pacman -S yay"
+      - description: >
+          yay behaves similarly to pacman
+          and prompts you to review PKGBUILDs.
+  helper_paru:
+    result:
+      - description: >
+          paru focuses on transparency and correctness.
+      - description: "Install paru"
+        command: "sudo pacman -S paru"
+      - description: >
+          paru shows diffs and enforces reviews more strictly.
+  manual_install:
+    result:
+      - description: >
+          Manual installation gives you full control.
+      - description: >
+          Steps:
+      - description: "Clone the repository"
+        command: "git clone https://aur.archlinux.org/<package>.git"
+      - description: "Enter directory and inspect PKGBUILD"
+        command: "cd <package> && less PKGBUILD"
+      - description: "Build and install"
+        command: "makepkg -si"
+      - description: >
+          This is the safest and most educational approach.
+  update_method:
+    question: >
+      How do you currently update AUR packages?
+    options:
+      h: "Using an AUR helper"
+      m: "Manually"
+    next:
+      h: update_helper
+      m: update_manual
+  update_helper:
+    result:
+      - description: >
+          Most helpers integrate with pacman.
+      - description: "Update system + AUR packages"
+        command: "yay -Syu"
+      - description: >
+          Always review PKGBUILD changes during updates.
+  update_manual:
+    result:
+      - description: >
+          Manual updates require rebuilding packages.
+      - description: "Pull changes"
+        command: "git pull"
+      - description: "Rebuild and reinstall"
+        command: "makepkg -si"
+      - description: >
+          This ensures you see exactly what changed.
+  aur_problems:
+    question: >
+      Are you experiencing issues with AUR packages?
+    options:
+      f: "Build failed"
+      d: "Dependency issues"
+      o: "Outdated package"
+    next:
+      f: aur_build_fail
+      d: aur_dependency
+      o: aur_outdated
+  aur_build_fail:
+    result:
+      - description: >
+          Common reasons:
+          - Missing dependencies
+          - Upstream source changes
+          - Incompatible compiler flags
+      - description: >
+          Check comments on the AUR package page.
+      - description: >
+          Many failures are temporary and already reported.
+  aur_dependency:
+    result:
+      - description: >
+          Dependency problems often come from partial upgrades.
+      - description: >
+          Always keep your system fully updated:
+        command: "sudo pacman -Syu"
+  aur_outdated:
+    result:
+      - description: >
+          AUR packages rely on maintainers.
+      - description: >
+          If a package is outdated:
+          - Check comments
+          - Consider adopting it
+          - Or migrate to alternatives
+  aur_wrapup:
+    result:
+      - description: >
+          The AUR is powerful because it trusts the user.
+      - description: >
+          Respect that trust by reviewing PKGBUILDs
+          and keeping your system clean.
+      - description: >
+          When in doubt:
+          - Read the Arch Wiki
+          - Read the PKGBUILD
+          - Ask the community

@@ -1,0 +1,167 @@
+start: upgrade_failure
+nodes:
+  upgrade_failure:
+    question: >
+      Something broke after a system upgrade.
+      What symptom are you seeing?
+    options:
+      l: "Libraries missing or programs won't start"
+      p: "Pacman errors during or after upgrade"
+      s: "System unstable or partially broken"
+    next:
+      l: libraries_intro
+      p: pacman_intro
+      s: unstable_intro
+  libraries_intro:
+    question: >
+      Do applications fail with messages like:
+      "error while loading shared libraries"?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: missing_libs
+      n: lib_other
+  missing_libs:
+    question: >
+      Was the upgrade interrupted or incomplete?
+    options:
+      y: "Yes"
+      n: "Not sure"
+    next:
+      y: resume_upgrade
+      n: full_upgrade_required
+  resume_upgrade:
+    result:
+      - description: >
+          Interrupted upgrades leave the system in an inconsistent state.
+          Resume and complete the upgrade by performing a full system upgrade.
+        command: "pacman -Syu"
+  full_upgrade_required:
+    result:
+      - description: >
+          Missing libraries almost always indicate a partial upgrade or mirror mismatch.
+          Do NOT downgrade random packages.
+          Perform a full system upgrade to restore consistency.
+        command: "pacman -Syu"
+  lib_other:
+    result:
+      - description: >
+          If the error is not related to missing libraries:
+          - Check executable permissions
+          - Verify the package is installed
+          - Reinstall the affected package
+  pacman_intro:
+    question: >
+      What kind of pacman issue are you facing?
+    options:
+      d: "Database errors"
+      l: "Database lock"
+      k: "Keyring or signature errors"
+    next:
+      d: db_error
+      l: db_lock
+      k: keyring_error
+  db_error:
+    question: >
+      Does pacman report database corruption?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: db_rebuild
+      n: pacman_generic
+  db_rebuild:
+    result:
+      - description: >
+          Database corruption can occur after crashes.
+          Remove sync databases and force a refresh.
+        command: "rm -rf /var/lib/pacman/sync/* && pacman -Syy"
+  db_lock:
+    question: >
+      Is another pacman process running?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: wait_pacman
+      n: remove_lock
+  wait_pacman:
+    result:
+      - description: >
+          Wait for the active pacman process to finish.
+          Never remove the database lock while pacman is running.
+  remove_lock:
+    result:
+      - description: >
+          Remove the lock ONLY if no pacman process exists.
+        command: "rm /var/lib/pacman/db.lck"
+  keyring_error:
+    question: >
+      Has the system been unused for a long time?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: keyring_reset
+      n: keyring_refresh
+  keyring_reset:
+    result:
+      - description: >
+          Reinitialize and repopulate the pacman keyring.
+        command: "pacman-key --init && pacman-key --populate archlinux"
+  keyring_refresh:
+    result:
+      - description: >
+          Refresh pacman signing keys.
+        command: "pacman-key --refresh-keys"
+  pacman_generic:
+    result:
+      - description: >
+          Read pacman error output carefully.
+          Many issues resolve after syncing mirrors and performing a full upgrade.
+  unstable_intro:
+    question: >
+      Is the system partially working but unreliable?
+    options:
+      y: "Yes"
+      n: "System does not boot"
+    next:
+      y: partial_upgrade_check
+      n: rescue_boot
+  partial_upgrade_check:
+    question: >
+      Was pacman -Sy run without -u?
+    options:
+      y: "Yes"
+      n: "Not sure"
+    next:
+      y: partial_upgrade_fix
+      n: transition_issue
+  partial_upgrade_fix:
+    result:
+      - description: >
+          Arch Linux does NOT support partial upgrades.
+          Fix the system by performing a full upgrade.
+        command: "pacman -Syu"
+  transition_issue:
+    result:
+      - description: >
+          Some breakage occurs during major transitions.
+          Always check Arch News after upgrades and follow official recovery instructions.
+  rescue_boot:
+    result:
+      - description: >
+          If the system does not boot:
+          - Use an Arch ISO
+          - Mount the system
+          - Chroot and upgrade
+          Most upgrade failures are recoverable.
+  finish_upgrade:
+    result:
+      - description: >
+          Key rules after upgrades:
+          - Never partially upgrade
+          - Never downgrade randomly
+          - Always read Arch News
+          - Finish interrupted upgrades

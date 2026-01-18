@@ -1,0 +1,143 @@
+start: chroot_goal
+nodes:
+  chroot_goal:
+    question: >
+      Why are you chrooting into the system?
+    options:
+      b: "Fix or reinstall bootloader"
+      u: "Repair a broken system"
+      r: "Reinstall critical packages"
+      n: "System does not boot at all"
+    next:
+      b: boot_fix
+      u: system_fix
+      r: reinstall
+      n: no_boot
+  boot_fix:
+    question: >
+      Are all required filesystems mounted?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: boot_fix_ready
+      n: boot_fix_mounts
+  boot_fix_mounts:
+    result:
+      - description: >
+          Before chrooting, mount the target system properly:
+          1. Mount the root filesystem to /mnt
+          2. Mount /boot or /efi if used
+          3. For UEFI systems, mount the EFI System Partition
+          Incorrect mounts will cause bootloader installation to fail.
+  boot_fix_ready:
+    result:
+      - description: >
+          Enter the environment using arch-chroot.
+          From inside the chroot, reinstall or reconfigure the bootloader
+          (GRUB or systemd-boot), then regenerate configuration files.
+        command: "arch-chroot /mnt"
+  system_fix:
+    question: >
+      Are /proc, /sys, and /dev available?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: system_fix_ready
+      n: system_fix_mounts
+  system_fix_mounts:
+    result:
+      - description: >
+          Do NOT use plain chroot.
+          Use arch-chroot, which bind-mounts /proc, /sys, and /dev.
+          Without these, many system tools will malfunction.
+  system_fix_ready:
+    question: >
+      What are you fixing inside the chroot?
+    options:
+      p: "Pacman or package issues"
+      c: "Configuration errors"
+      u: "Users or passwords"
+    next:
+      p: pacman_fix
+      c: config_fix
+      u: user_fix
+  pacman_fix:
+    result:
+      - description: >
+          Common recovery steps include syncing mirrors,
+          refreshing the keyring, and performing a full upgrade.
+        command: "pacman -Syu"
+  config_fix:
+    result:
+      - description: >
+          Fix broken configuration files such as:
+          - fstab
+          - mkinitcpio.conf
+          - bootloader configuration files
+          Always regenerate configs when required.
+  user_fix:
+    result:
+      - description: >
+          Reset user or root passwords and verify user/group configuration
+          before rebooting.
+        command: "passwd"
+  reinstall:
+    question: >
+      Reinstall which package category?
+    options:
+      c: "Core system packages"
+      k: "Kernel and firmware"
+      a: "All installed packages"
+    next:
+      c: reinstall_core
+      k: reinstall_kernel
+      a: reinstall_all
+  reinstall_core:
+    result:
+      - description: >
+          Reinstall essential system components.
+        command: "pacman -S systemd bash coreutils filesystem"
+  reinstall_kernel:
+    result:
+      - description: >
+          Reinstall the kernel and firmware, then rebuild the initramfs.
+        command: "pacman -S linux linux-firmware && mkinitcpio -P"
+  reinstall_all:
+    result:
+      - description: >
+          Reinstall all explicitly installed packages.
+        command: "pacman -Qnq | pacman -S --needed -"
+  no_boot:
+    question: >
+      Can you boot from an Arch ISO?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: rescue_iso
+      n: hardware_issue
+  rescue_iso:
+    result:
+      - description: >
+          Use the Arch ISO to recover the system:
+          1. Mount the root filesystem
+          2. Mount boot/EFI partitions
+          3. arch-chroot into /mnt
+          Most unbootable systems are recoverable this way.
+  hardware_issue:
+    result:
+      - description: >
+          If you cannot boot external media:
+          - Check firmware settings
+          - Verify disk detection
+          - Hardware failure may be present
+  finish_chroot:
+    result:
+      - description: >
+          Before exiting the chroot:
+          - Exit the environment
+          - Unmount all filesystems
+          - Reboot cleanly
+          chroot is a recovery tool, not a workaround.

@@ -1,0 +1,178 @@
+start: log_goal
+nodes:
+  log_goal:
+    question: >
+      What do you want to inspect in logs?
+    options:
+      b: "Boot logs"
+      s: "Service logs"
+      k: "Kernel messages"
+      p: "Persistent logging"
+      f: "Filter or search logs"
+    next:
+      b: boot_logs
+      s: service_logs
+      k: kernel_logs
+      p: persistence
+      f: filtering
+  boot_logs:
+    question: >
+      Which boot?
+    options:
+      c: "Current boot"
+      p: "Previous boot"
+      l: "List boots"
+    next:
+      c: boot_current
+      p: boot_previous
+      l: boot_list
+  boot_current:
+    result:
+      - description: >
+          View logs from the current boot.
+        command: "journalctl -b"
+  boot_previous:
+    result:
+      - description: >
+          View logs from the previous boot.
+        command: "journalctl -b -1"
+  boot_list:
+    result:
+      - description: >
+          List all recorded boots.
+        command: "journalctl --list-boots"
+      - description: >
+          Use the index value with -b <index> to inspect a specific boot.
+  service_logs:
+    question: >
+      Do you want logs for a specific service?
+    options:
+      y: "Yes"
+      n: "No, show all services"
+    next:
+      y: service_specific
+      n: service_all
+  service_specific:
+    question: >
+      Do you want to follow logs live?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: service_follow
+      n: service_static
+  service_follow:
+    result:
+      - description: >
+          Follow service logs in real time.
+        command: "journalctl -u SERVICE -f"
+  service_static:
+    result:
+      - description: >
+          View logs for a specific service.
+        command: "journalctl -u SERVICE"
+      - description: >
+          Add -b to restrict logs to the current boot.
+  service_all:
+    result:
+      - description: >
+          View logs from all services.
+        command: "journalctl"
+      - description: >
+          Filtering is recommended to reduce output volume.
+  kernel_logs:
+    question: >
+      What kernel messages do you want to inspect?
+    options:
+      b: "Boot-time messages"
+      r: "Runtime messages"
+    next:
+      b: kernel_boot
+      r: kernel_runtime
+  kernel_boot:
+    result:
+      - description: >
+          Kernel messages from the current boot.
+        command: "journalctl -k -b"
+  kernel_runtime:
+    result:
+      - description: >
+          Recent kernel messages.
+        command: "journalctl -k"
+      - description: >
+          dmesg may show early messages not stored persistently.
+  filtering:
+    question: >
+      How do you want to filter logs?
+    options:
+      t: "By time"
+      p: "By priority"
+      g: "By keyword"
+    next:
+      t: filter_time
+      p: filter_priority
+      g: filter_grep
+  filter_time:
+    result:
+      - description: >
+          Filter logs by relative time.
+        command: "journalctl --since \"1 hour ago\""
+      - description: >
+          Filter logs by absolute time range.
+        command: "journalctl --since \"2024-01-01\" --until \"2024-01-02\""
+  filter_priority:
+    result:
+      - description: >
+          Filter logs by priority level.
+        command: "journalctl -p err"
+      - description: >
+          Priority levels include emerg, alert, crit, err, warning, notice, info, debug.
+  filter_grep:
+    result:
+      - description: >
+          Search logs using grep.
+        command: "journalctl | grep keyword"
+      - description: >
+          Combine service filtering with grep.
+        command: "journalctl -u SERVICE | grep error"
+  persistence:
+    question: >
+      Are logs persistent across reboots?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: persistence_ok
+      n: enable_persistence
+  persistence_ok:
+    result:
+      - description: >
+          Persistent logging is enabled.
+      - description: >
+          Logs are stored on disk under /var/log/journal.
+  enable_persistence:
+    question: >
+      Do you want to enable persistent logging?
+    options:
+      y: "Yes"
+    next:
+      y: persistence_enable
+  persistence_enable:
+    result:
+      - description: >
+          Create the journal directory.
+        command: "mkdir -p /var/log/journal"
+      - description: >
+          Restart journald to apply changes.
+        command: "systemctl restart systemd-journald"
+  maintenance:
+    result:
+      - description: >
+          Check current journal disk usage.
+        command: "journalctl --disk-usage"
+      - description: >
+          Limit journal size.
+        command: "journalctl --vacuum-size=500M"
+      - description: >
+          Remove logs older than a specific time.
+        command: "journalctl --vacuum-time=2weeks"

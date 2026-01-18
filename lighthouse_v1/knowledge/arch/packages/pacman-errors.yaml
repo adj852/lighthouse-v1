@@ -1,0 +1,198 @@
+start: error_class
+nodes:
+  error_class:
+    question: >
+      pacman is strict by design.
+      Errors usually mean something is out of sync or unsafe.
+      What error are you encountering?
+    options:
+      k: "Invalid or corrupted keyring"
+      s: "Signature verification failed"
+      c: "Conflicting files"
+      d: "Dependency resolution failed"
+      l: "Database lock (db.lck)"
+      m: "Mirror or download failure"
+    next:
+      k: keyring_invalid
+      s: signature_fail
+      c: file_conflict
+      d: dependency_fail
+      l: db_lock
+      m: mirror_fail
+  keyring_invalid:
+    question: >
+      Keyring errors usually occur when the system
+      has not been updated for a long time.
+      Has this system been unused for weeks or months?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: keyring_init
+      n: keyring_refresh
+  keyring_init:
+    result:
+      - description: >
+          Initialize the pacman keyring from scratch.
+          This is safe and common on fresh or long-unused systems.
+        command: "sudo pacman-key --init"
+      - description: >
+          Populate official Arch Linux signing keys.
+        command: "sudo pacman-key --populate archlinux"
+      - description: >
+          After this completes, retry your pacman command.
+  keyring_refresh:
+    result:
+      - description: >
+          Refresh existing keys from keyservers.
+          Useful when keys are expired but the keyring exists.
+        command: "sudo pacman-key --refresh-keys"
+      - description: >
+          This may take time depending on network conditions.
+  signature_fail:
+    question: >
+      Signature failures often indicate mirror problems
+      rather than broken packages.
+      Are your mirrors recently updated?
+    options:
+      y: "Yes"
+      n: "Not sure"
+    next:
+      y: signature_info
+      n: mirror_sync
+  signature_info:
+    result:
+      - description: >
+          If mirrors are current but signatures fail,
+          the system may be partially upgraded or keys outdated.
+      - description: >
+          Perform a full system upgrade.
+        command: "sudo pacman -Syu"
+  mirror_sync:
+    result:
+      - description: >
+          Out-of-sync mirrors are the most common cause
+          of signature verification failures.
+      - description: >
+          Refresh the mirror list using reflector.
+        command: "sudo reflector --country <YOUR_COUNTRY> --latest 10 --sort rate --save /etc/pacman.d/mirrorlist"
+      - description: >
+          Retry the upgrade after mirrors are updated.
+        command: "sudo pacman -Syu"
+  file_conflict:
+    question: >
+      pacman refuses to overwrite files it does not own.
+      Are the conflicting files owned by another package?
+    options:
+      y: "Yes"
+      n: "No / Not sure"
+    next:
+      y: identify_owner
+      n: manual_conflict
+  identify_owner:
+    result:
+      - description: >
+          Identify which package owns the conflicting file.
+        command: "pacman -Qo /path/to/file"
+      - description: >
+          Common causes include package renames,
+          splits, or merges.
+      - description: >
+          Avoid --overwrite unless the Arch Wiki explicitly recommends it.
+  manual_conflict:
+    question: >
+      Was the file manually installed
+      (copied, compiled, or extracted by hand)?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: remove_manual
+      n: conflict_unknown
+  remove_manual:
+    result:
+      - description: >
+          Manually installed files can conflict with pacman packages.
+      - description: >
+          Safely move or remove the file, then retry pacman.
+        command: "sudo mv /path/to/file /path/to/file.backup"
+  conflict_unknown:
+    result:
+      - description: >
+          Do NOT force overwrites blindly.
+      - description: >
+          Investigate pacman output, Arch Wiki notes,
+          and Arch news for transitions.
+  dependency_fail:
+    question: >
+      Dependency resolution failures almost always
+      indicate a system consistency issue.
+      Did you perform a partial upgrade?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: partial_upgrade
+      n: broken_deps
+  partial_upgrade:
+    result:
+      - description: >
+          Partial upgrades are unsupported on Arch Linux
+          and will break dependency resolution.
+      - description: >
+          Fix this by performing a full system upgrade.
+        command: "sudo pacman -Syu"
+  broken_deps:
+    result:
+      - description: >
+          Dependency failures without partial upgrades
+          usually occur during major transitions.
+      - description: >
+          Read Arch news, upgrade all packages,
+          and rebuild AUR packages if required.
+  db_lock:
+    question: >
+      pacman uses a lock file to prevent corruption.
+      Is another pacman process currently running?
+    options:
+      y: "Yes"
+      n: "No / it crashed"
+    next:
+      y: wait_pacman
+      n: remove_lock
+  wait_pacman:
+    result:
+      - description: >
+          Wait until the active pacman process finishes.
+      - description: >
+          Never remove the lock while pacman is running.
+  remove_lock:
+    result:
+      - description: >
+          Verify no pacman process is running.
+        command: "ps aux | grep pacman"
+      - description: >
+          Remove the stale lock file only if safe.
+        command: "sudo rm /var/lib/pacman/db.lck"
+  mirror_fail:
+    question: >
+      Are package downloads timing out or failing?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: mirror_network
+      n: mirror_other
+  mirror_network:
+    result:
+      - description: >
+          Check basic network connectivity.
+      - description: >
+          Force refresh package databases and retry.
+        command: "sudo pacman -Syyu"
+  mirror_other:
+    result:
+      - description: >
+          Mirror issues are often temporary.
+      - description: >
+          Switching mirrors or waiting usually resolves the issue.

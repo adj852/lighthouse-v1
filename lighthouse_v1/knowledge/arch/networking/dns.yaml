@@ -1,0 +1,140 @@
+start: dns_symptom
+nodes:
+  dns_symptom:
+    question: >
+      DNS translates names like google.com into IP addresses.
+      What problem are you experiencing?
+    options:
+      n: "Names do not resolve at all"
+      s: "Resolution is very slow"
+      i: "Sometimes works, sometimes doesn't"
+    next:
+      n: no_resolve
+      s: slow_dns
+      i: inconsistent
+  no_resolve:
+    question: >
+      First, let's separate networking from DNS.
+      Can you ping an IP address like 1.1.1.1?
+    options:
+      y: "Yes, IPs work"
+      n: "No, nothing works"
+    next:
+      y: resolver_issue
+      n: network_issue
+  network_issue:
+    result:
+      - description: >
+          This is not a DNS issue.
+      - description: >
+          If IP addresses fail, the network is broken earlier in the stack.
+      - description: >
+          Check interfaces, routes, and network services.
+  resolver_issue:
+    question: >
+      On Arch, DNS is usually managed by one service.
+      Which one applies to your system?
+    options:
+      r: "systemd-resolved"
+      m: "NetworkManager"
+      o: "Manual or not sure"
+    next:
+      r: resolved_intro
+      m: nm_dns
+      o: manual_dns
+  resolved_intro:
+    question: >
+      systemd-resolved provides caching, split DNS, and DNSSEC.
+      Is it running?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: resolv_conf
+      n: resolved_enable
+  resolved_enable:
+    result:
+      - description: >
+          systemd-resolved must be running to manage DNS.
+        command: "sudo systemctl enable --now systemd-resolved"
+  resolv_conf:
+    question: >
+      systemd-resolved requires a symlinked resolv.conf.
+      Is /etc/resolv.conf a symlink?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: resolved_status
+      n: resolv_fix
+  resolv_fix:
+    result:
+      - description: >
+          systemd-resolved will not function without the correct resolv.conf symlink.
+        command: "sudo ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf"
+  resolved_status:
+    result:
+      - description: >
+          Inspect active DNS configuration and servers.
+        command: "resolvectl status"
+  nm_dns:
+    result:
+      - description: >
+          NetworkManager can manage DNS directly or integrate with systemd-resolved.
+      - description: >
+          Mixing DNS managers commonly breaks resolution.
+      - description: >
+          Ensure only one DNS system is active.
+  manual_dns:
+    result:
+      - description: >
+          Manual DNS relies on static /etc/resolv.conf entries.
+      - description: >
+          Example valid nameservers:
+      - description: >
+          nameserver 1.1.1.1
+          nameserver 8.8.8.8
+      - description: >
+          Be aware that other services may overwrite this file.
+  slow_dns:
+    question: >
+      Slow DNS can feel like slow internet.
+      Does changing DNS servers help?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: dns_servers
+      n: dns_latency
+  dns_servers:
+    result:
+      - description: >
+          Try well-known fast public DNS servers.
+      - description: >
+          Cloudflare (1.1.1.1) and Google (8.8.8.8) are common choices.
+  dns_latency:
+    result:
+      - description: >
+          Slow DNS can be caused by IPv6 issues, VPN interception, or DNSSEC delays.
+        command: "dig archlinux.org"
+  inconsistent:
+    question: >
+      Inconsistent DNS usually indicates conflicts.
+      Are multiple DNS services running?
+    options:
+      y: "Yes"
+      n: "No or not sure"
+    next:
+      y: conflict
+      n: caching
+  conflict:
+    result:
+      - description: >
+          Never run multiple DNS managers simultaneously.
+      - description: >
+          Choose one: systemd-resolved, NetworkManager DNS, or manual resolv.conf.
+  caching:
+    result:
+      - description: >
+          DNS caches can return stale results.
+        command: "resolvectl flush-caches"

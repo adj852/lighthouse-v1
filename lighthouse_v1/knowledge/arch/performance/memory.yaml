@@ -1,0 +1,202 @@
+start: memory_goal
+nodes:
+  memory_goal:
+    question: >
+      Linux memory behavior is often misunderstood.
+      What problem are you actually experiencing?
+    options:
+      o: "Out of memory, freezes, or apps killed"
+      s: "High memory usage reported"
+      t: "Tune swap behavior"
+    next:
+      o: oom_intro
+      s: usage_intro
+      t: swap_intro
+  oom_intro:
+    question: >
+      How does the issue present itself?
+    options:
+      f: "System freezes or becomes unresponsive"
+      k: "Applications are killed automatically"
+    next:
+      f: freeze_check
+      k: oom_kill
+  freeze_check:
+    question: >
+      Does the system recover after waiting?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: freeze_pressure
+      n: hard_lock
+  freeze_pressure:
+    result:
+      - description: >
+          Temporary freezes usually indicate memory pressure.
+          The kernel is reclaiming cache or swapping.
+          This is common on low-RAM systems.
+  hard_lock:
+    result:
+      - description: >
+          Complete lockups may indicate:
+          - No swap configured
+          - Insufficient RAM
+          - Kernel bugs
+          Adding swap often prevents hard freezes.
+  oom_kill:
+    result:
+      - description: >
+          The OOM killer activates only as a last resort.
+          It terminates processes to keep the system alive.
+      - description: >
+          Inspect kernel logs for OOM events.
+        command: "journalctl -k | grep -i oom"
+  usage_intro:
+    question: >
+      What does the memory usage look like?
+    options:
+      c: "Cache/buffers are high"
+      a: "Applications consume most RAM"
+    next:
+      c: cache_behavior
+      a: app_usage
+  cache_behavior:
+    result:
+      - description: >
+          Linux aggressively uses free RAM for disk cache.
+          Cached memory is instantly reclaimable.
+          High cache usage is healthy and expected.
+          Do NOT manually drop caches.
+  app_usage:
+    question: >
+      Is a specific application consuming excessive memory?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: identify_app
+      n: memory_pressure_intro
+  identify_app:
+    result:
+      - description: >
+          Identify memory-heavy processes using an interactive viewer.
+        command: "htop"
+      - description: >
+          Or list top memory consumers from the command line.
+        command: "ps aux --sort=-%mem | head"
+      - description: >
+          Some workloads such as browsers, virtual machines,
+          and compilers are memory-hungry by design.
+  memory_pressure_intro:
+    question: >
+      Is the system still responsive?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: normal_pressure
+      n: pressure_problem
+  normal_pressure:
+    result:
+      - description: >
+          High RAM usage alone is not a problem.
+          Linux will reclaim memory automatically when needed.
+  pressure_problem:
+    result:
+      - description: >
+          Unresponsiveness under load suggests insufficient RAM or swap.
+          Consider adding swap or reducing workload.
+  swap_intro:
+    question: >
+      Swap acts as a safety net, not a performance feature.
+      Is swap currently configured?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: swap_type
+      n: swap_missing
+  swap_missing:
+    result:
+      - description: >
+          Systems without swap are more prone to OOM conditions
+          and hard freezes.
+          Even fast SSD-backed swap is better than no swap.
+          Recommended minimum:
+          - 2–4 GB for desktops
+          - More for low-RAM systems
+  swap_type:
+    question: >
+      What type of swap are you using?
+    options:
+      p: "Swap partition"
+      f: "Swap file"
+      z: "zram"
+    next:
+      p: swap_partition
+      f: swap_file
+      z: zram
+  swap_partition:
+    result:
+      - description: >
+          Swap partitions are traditional and reliable.
+          Performance is similar to swap files on SSDs.
+  swap_file:
+    result:
+      - description: >
+          Swap files are flexible and easy to resize.
+          Fully supported on ext4, xfs, and btrfs (with care).
+  zram:
+    result:
+      - description: >
+          zram provides compressed RAM-based swap.
+          Useful on low-RAM systems.
+          Reduces disk I/O at the cost of increased CPU usage.
+  swappiness_intro:
+    question: >
+      Swappiness controls how aggressively the kernel uses swap.
+      Do you want to adjust it?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: swappiness_adjust
+      n: swappiness_default
+  swappiness_default:
+    result:
+      - description: >
+          The default swappiness value (60) is reasonable
+          for most systems.
+          Avoid tuning unless you understand the tradeoffs.
+  swappiness_adjust:
+    question: >
+      What is your system type?
+    options:
+      d: "Desktop / Laptop"
+      s: "Server"
+    next:
+      d: swappiness_desktop
+      s: swappiness_server
+  swappiness_desktop:
+    result:
+      - description: >
+          Lower values (10–30) reduce swap usage
+          and improve responsiveness.
+          Avoid setting swappiness to 0.
+          Example adjustment:
+        command: "sysctl vm.swappiness=20"
+  swappiness_server:
+    result:
+      - description: >
+          Higher swappiness can improve memory stability,
+          especially for long-running services.
+  finish_memory:
+    result:
+      - description: >
+          Key takeaways:
+          - Free RAM is wasted RAM
+          - Cache usage is not a problem
+          - Swap prevents freezes
+          - OOM killer is a last resort
+          - Tuning is optional, not required
