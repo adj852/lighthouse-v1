@@ -1,8 +1,11 @@
 # 🗼 Lighthouse
 
-**An interactive, Arch-style Linux troubleshooting and learning guide.**
+**A guided, interactive troubleshooting and learning tool for Arch Linux.
 
-Lighthouse helps you diagnose, understand, and fix common Arch Linux problems through interactive decision-based guides, instead of endless wiki hopping or guesswork.
+Lighthouse helps you diagnose common Arch Linux issues step by step, using clear questions and explanations instead of guesswork, forum hopping, or endless wiki tabs.
+
+It doesn’t auto-fix your system.
+It helps you understand what’s wrong and why — then guides you toward the right solution.
 
 ---
 
@@ -31,6 +34,9 @@ Lighthouse helps you diagnose, understand, and fix common Arch Linux problems th
 
 - Python 3.10+
 - Arch Linux (recommended, but not strictly required)
+- pyYAML 6.0
+- pydantic 2.0
+- pytest 8.0
 
 ---
 
