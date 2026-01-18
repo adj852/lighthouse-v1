@@ -32,6 +32,8 @@ Lighthouse helps you diagnose, understand, and fix common Arch Linux problems th
 - Python 3.10+
 - Arch Linux (recommended, but not strictly required)
 
+---
+
 ## 🛣️ Roadmap
 
 ### v1
@@ -54,12 +56,16 @@ Lighthouse helps you diagnose, understand, and fix common Arch Linux problems th
 
  - Optional TUI enhancements
 
+---
+
 ## 🌟 Philosophy
 
 Lighthouse does not fix your system for you.
 It helps you understand why something broke — and how to fix it correctly.
 
 “Stop guessing. Start understanding.”
+
+---
 
 ### Run Lighthouse
 
