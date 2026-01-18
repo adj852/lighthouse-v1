@@ -1,6 +1,6 @@
 # 🗼 Lighthouse
 
-**A guided, interactive troubleshooting and learning tool for Arch Linux.
+A guided, interactive troubleshooting and learning tool for Arch Linux.
 
 Lighthouse helps you diagnose common Arch Linux issues step by step, using clear questions and explanations instead of guesswork, forum hopping, or endless wiki tabs.
 
