@@ -1,0 +1,238 @@
+start: reason
+
+nodes:
+  reason:
+    question: >
+      The initramfs prepares your system before the real root is mounted.
+
+      Why are you dealing with initramfs?
+    options:
+      e: "Encrypted root or home"
+      d: "Missing drivers at boot"
+      b: "Boot fails very early"
+      u: "Kernel or mkinitcpio updated"
+      r: "Resume from hibernation fails"
+    next:
+      e: encryption
+      d: drivers
+      b: early_fail
+      u: rebuild
+      r: resume
+
+  # =================================================
+  # REBUILD PATH
+  # =================================================
+
+  rebuild:
+    result:
+      - description: >
+          The initramfs must be rebuilt after:
+          - Kernel updates
+          - mkinitcpio updates
+          - Changes to /etc/mkinitcpio.conf
+      - description: "Rebuild all presets:"
+        command: "sudo mkinitcpio -P"
+      - description: >
+          If only one kernel is affected,
+          rebuild its preset explicitly.
+
+  # =================================================
+  # ENCRYPTION
+  # =================================================
+
+  encryption:
+    question: "Which encryption setup are you using?"
+    options:
+      l: "LUKS encrypted root"
+      h: "LUKS encrypted home only"
+      v: "LUKS + LVM or RAID"
+    next:
+      l: luks_root
+      h: luks_home
+      v: luks_lvm
+
+  luks_home:
+    result:
+      - description: >
+          Encrypted home does not require initramfs support.
+      - description: >
+          It is unlocked after boot via PAM or systemd.
+      - description: >
+          initramfs changes are unnecessary.
+
+  luks_root:
+    question: "Which initramfs framework do you use?"
+    options:
+      s: "systemd-based initramfs"
+      b: "BusyBox / traditional mkinitcpio"
+    next:
+      s: systemd_hooks
+      b: busybox_hooks
+
+  luks_lvm:
+    result:
+      - description: >
+          Encrypted LVM or RAID requires additional hooks.
+      - description: >
+          Ensure hook order includes:
+          - encrypt / sd-encrypt
+          - lvm2 or mdadm
+      - description: >
+          Incorrect order WILL cause boot failure.
+
+  systemd_hooks:
+    result:
+      - description: >
+          systemd-based initramfs uses kernel parameters only.
+      - description: >
+          Required hooks:
+          - systemd
+          - sd-encrypt
+          - sd-vconsole (optional)
+      - description: >
+          Kernel parameters include:
+          - rd.luks.name=
+          - rd.luks.options=
+      - description: >
+          cryptdevice= is NOT used here.
+
+  busybox_hooks:
+    result:
+      - description: >
+          Traditional initramfs requires:
+          - encrypt hook
+          - correct kernel parameters
+      - description: >
+          Kernel parameters must include:
+          - cryptdevice=UUID=device_name
+          - root=/dev/mapper/name
+      - description: >
+          Hook order matters: encrypt must come before filesystems.
+
+  # =================================================
+  # MISSING DRIVERS
+  # =================================================
+
+  drivers:
+    question: "Which type of driver is missing?"
+    options:
+      s: "Storage or filesystem"
+      g: "Graphics (early KMS)"
+      c: "CPU microcode"
+    next:
+      s: storage
+      g: gpu
+      c: microcode
+
+  storage:
+    result:
+      - description: >
+          If root is on NVMe, RAID, USB, or uncommon filesystems:
+      - description: >
+          Add required modules to MODULES=() in mkinitcpio.conf.
+      - description: >
+          Filesystem drivers must be present early.
+      - description: "Rebuild initramfs:"
+        command: "sudo mkinitcpio -P"
+
+  gpu:
+    result:
+      - description: >
+          Early KMS improves boot visuals and avoids flicker.
+      - description: >
+          Add GPU modules to MODULES=():
+          - i915 (Intel)
+          - amdgpu (AMD)
+          - nvidia (with care)
+      - description: >
+          Required for smooth Plymouth or silent boot.
+      - description: "Rebuild initramfs:"
+        command: "sudo mkinitcpio -P"
+
+  microcode:
+    result:
+      - description: >
+          CPU microcode must be loaded before initramfs.
+      - description: >
+          Ensure microcode image is first in bootloader config.
+      - description: >
+          GRUB example:
+          - initrd /intel-ucode.img
+          - initrd /initramfs-linux.img
+
+  # =================================================
+  # EARLY BOOT FAILURES
+  # =================================================
+
+  early_fail:
+    question: "What happens during boot?"
+    options:
+      s: "Dropped into emergency shell"
+      p: "Kernel panic"
+      h: "System hangs silently"
+    next:
+      s: emergency_shell
+      p: kernel_panic
+      h: silent_fail
+
+  emergency_shell:
+    result:
+      - description: >
+          Emergency shell means initramfs started but failed.
+      - description: >
+          Common causes:
+          - Wrong root= or crypt UUID
+          - Missing hooks
+          - Missing drivers
+      - description: >
+          Use ls /dev to confirm devices exist.
+
+  kernel_panic:
+    result:
+      - description: >
+          Kernel panic often indicates:
+          - initramfs missing
+          - initramfs corrupted
+          - Incorrect initrd path in bootloader
+      - description: >
+          Reinstall kernel and rebuild initramfs.
+
+  silent_fail:
+    result:
+      - description: >
+          Enable verbose boot for debugging:
+          - remove quiet
+          - remove splash
+      - description: >
+          Add debug to kernel parameters if needed.
+
+  # =================================================
+  # HIBERNATION / RESUME
+  # =================================================
+
+  resume:
+    question: "Do you use swap for hibernation?"
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: resume_swap
+      n: resume_note
+
+  resume_swap:
+    result:
+      - description: >
+          Hibernation requires resume support in initramfs.
+      - description: >
+          Ensure resume hook is present:
+          - After udev
+          - Before filesystems
+      - description: >
+          Kernel parameter:
+          - resume=UUID=swap_uuid
+
+  resume_note:
+    result:
+      - description: >
+          If hibernation is not used,
+          resume hook is unnecessary.

@@ -1,0 +1,195 @@
+start: aur_risk
+
+nodes:
+  aur_risk:
+    question: >
+      Before using the AUR, it's good to pause for a moment.
+      The AUR gives you freedom — but also responsibility.
+
+      What security concern are you thinking about right now?
+    options:
+      g: "Is the AUR safe in general?"
+      p: "How do I inspect PKGBUILD files properly?"
+      r: "What are the risks of running untrusted code?"
+      b: "Best practices to stay safe long-term"
+    next:
+      g: safety_model
+      p: pkgbuild_intro
+      r: execution_risk
+      b: best_practices
+
+  # =================================================
+  # GENERAL TRUST MODEL
+  # =================================================
+
+  safety_model:
+    result:
+      - description: >
+          The AUR is untrusted by design.
+      - description: >
+          Anyone with an Arch account can submit or modify a PKGBUILD.
+      - description: >
+          Arch Linux maintainers do NOT review, audit,
+          or guarantee AUR content.
+      - description: >
+          This does not mean the AUR is unsafe —
+          it means trust is delegated to the user.
+      - description: >
+          In practice:
+          - Popular packages are often safe
+          - Mistakes and malicious uploads can still happen
+      - description: >
+          Your safety depends on awareness, not blind trust.
+
+  # =================================================
+  # PKGBUILD OVERVIEW
+  # =================================================
+
+  pkgbuild_intro:
+    question: >
+      A PKGBUILD is just a shell script.
+      Which part would you like to understand better?
+    options:
+      o: "Overall structure of a PKGBUILD"
+      s: "Source URLs and checksums"
+      c: "build() and package() functions"
+      i: "install scripts (.install files)"
+    next:
+      o: pkgbuild_overview
+      s: pkgbuild_sources
+      c: pkgbuild_build
+      i: pkgbuild_install
+
+  pkgbuild_overview:
+    result:
+      - description: >
+          A PKGBUILD defines:
+          - Where the source comes from
+          - How it is built
+          - How it is installed
+      - description: >
+          Important fields to recognize:
+          - pkgname, pkgver, pkgrel
+          - source, sha256sums
+          - depends, makedepends
+      - description: >
+          PKGBUILDs are executed by makepkg
+          using your normal user account.
+
+  # =================================================
+  # SOURCE INSPECTION
+  # =================================================
+
+  pkgbuild_sources:
+    result:
+      - description: >
+          Always inspect the source array.
+      - description: >
+          Source URLs should point to:
+          - Official project sites
+          - Reputable Git repositories
+      - description: >
+          Be cautious with:
+          - URL shorteners
+          - Random file hosting services
+          - Downloaded binaries instead of source
+      - description: >
+          Checksums (sha256sums) help detect tampering.
+      - description: >
+          Missing or skipped checksums reduce trust.
+
+  # =================================================
+  # BUILD & PACKAGE FUNCTIONS
+  # =================================================
+
+  pkgbuild_build:
+    result:
+      - description: >
+          The build() and package() functions contain executable shell code.
+      - description: >
+          Look for:
+          - Unexpected network access
+          - Downloading extra scripts during build
+          - Obfuscated shell commands
+      - description: >
+          Major red flags:
+          - curl | sh
+          - wget piped directly into bash
+          - rm -rf outside pkgdir
+      - description: >
+          Most legitimate PKGBUILDs are boring — and that’s good.
+
+  # =================================================
+  # INSTALL SCRIPTS
+  # =================================================
+
+  pkgbuild_install:
+    result:
+      - description: >
+          Some packages include .install scripts.
+      - description: >
+          These run after installation or removal.
+      - description: >
+          Watch closely for:
+          - Enabling services automatically
+          - Modifying system configuration
+          - Deleting files outside the package scope
+      - description: >
+          Nothing should surprise you.
+
+  # =================================================
+  # EXECUTION RISKS
+  # =================================================
+
+  execution_risk:
+    result:
+      - description: >
+          makepkg runs code as your normal user.
+      - description: >
+          This limits damage, but does not eliminate risk.
+      - description: >
+          A malicious PKGBUILD could:
+          - Steal user files
+          - Modify your home directory
+          - Install backdoors in user space
+      - description: >
+          Never build AUR packages as root.
+      - description: >
+          Root access should only happen during pacman install steps.
+
+  # =================================================
+  # BEST PRACTICES
+  # =================================================
+
+  best_practices:
+    result:
+      - description: >
+          Recommended habits for long-term safety:
+      - description: >
+          - Prefer popular, well-maintained packages
+      - description: >
+          - Read PKGBUILDs, even briefly
+      - description: >
+          - Read AUR comments before installing
+      - description: >
+          - Avoid partial system upgrades
+      - description: >
+          - Use clean build directories when possible
+      - description: >
+          - Keep backups of important data
+      - description: >
+          If something feels wrong — stop and investigate.
+
+  # =================================================
+  # FINAL REMINDER
+  # =================================================
+
+  aur_final:
+    result:
+      - description: >
+          The AUR is powerful because it trusts you.
+      - description: >
+          That trust is what makes Arch flexible, transparent,
+          and educational.
+      - description: >
+          Respect it, and the AUR will serve you well.

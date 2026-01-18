@@ -1,0 +1,234 @@
+start: display_goal
+
+nodes:
+  display_goal:
+    question: >
+      Your display server controls how windows, input, and graphics work.
+      What do you prioritize most right now?
+    options:
+      s: "Stability, compatibility, and predictability"
+      m: "Modern features, security, and smooth rendering"
+    next:
+      s: x11
+      m: wayland_intro
+
+  # =================================================
+  # X11 PATH
+  # =================================================
+
+  x11:
+    question: >
+      X11 is the traditional Linux display system.
+      Why are you considering it?
+    options:
+      o: "Older hardware or drivers"
+      c: "Complex or custom setup"
+      n: "NVIDIA or multi-monitor reliability"
+    next:
+      o: x11_old_hw
+      c: x11_complex
+      n: x11_nvidia
+
+  x11_old_hw:
+    result:
+      - description: >
+          X11 works on almost all hardware, even very old systems.
+      - description: >
+          Drivers and applications have been tested for decades.
+      - description: >
+          Ideal for:
+          - Older GPUs
+          - Legacy software
+          - Minimal systems
+
+  x11_complex:
+    result:
+      - description: >
+          X11 allows deep customization:
+      - description: >
+          - Window managers (i3, bspwm, awesome)
+          - Manual screen layouts (xrandr)
+          - Advanced scripting and automation
+      - description: >
+          Wayland intentionally limits this level of control.
+
+  x11_nvidia:
+    result:
+      - description: >
+          NVIDIA drivers are still most mature on X11.
+      - description: >
+          Multi-monitor, PRIME, and screen recording
+          are often more reliable.
+      - description: >
+          If you want fewer surprises, X11 is still valid.
+
+  x11_summary:
+    result:
+      - description: >
+          Choose X11 if you value:
+      - description: >
+          - Maximum compatibility
+          - Predictable behavior
+          - Legacy and niche workflows
+      - description: >
+          X11 is not obsolete — it is stable and well understood.
+
+  # =================================================
+  # WAYLAND PATH
+  # =================================================
+
+  wayland_intro:
+    question: >
+      Wayland is the modern replacement for X11.
+      What attracts you to it?
+    options:
+      s: "Security improvements"
+      f: "Smooth animations and input"
+      c: "Modern desktop experience"
+    next:
+      s: wayland_security
+      f: wayland_smooth
+      c: wayland_env
+
+  wayland_security:
+    result:
+      - description: >
+          Wayland isolates applications by default.
+      - description: >
+          Apps cannot:
+          - Read global keystrokes
+          - Capture screen without permission
+      - description: >
+          This prevents many keylogging and spying attacks.
+
+  wayland_smooth:
+    result:
+      - description: >
+          Wayland reduces:
+      - description: >
+          - Tearing
+          - Input latency
+          - Frame pacing issues
+      - description: >
+          Compositing is built-in, not layered on top.
+
+  # =================================================
+  # WAYLAND ENVIRONMENTS
+  # =================================================
+
+  wayland_env:
+    question: >
+      What kind of desktop do you want to use?
+    options:
+      d: "Full desktop environment (GNOME / KDE)"
+      w: "Minimal or tiling compositor"
+    next:
+      d: wayland_de
+      w: wayland_wm
+
+  wayland_de:
+    question: >
+      Which desktop environment?
+    options:
+      g: "GNOME"
+      k: "KDE Plasma"
+    next:
+      g: gnome_wayland
+      k: kde_wayland
+
+  gnome_wayland:
+    result:
+      - description: >
+          GNOME is Wayland-first.
+      - description: >
+          Most features work better on Wayland than X11.
+      - description: >
+          NVIDIA support is improving rapidly.
+      - description: >
+          Recommended for laptops and touchpads.
+
+  kde_wayland:
+    result:
+      - description: >
+          KDE Plasma on Wayland is mature and fast.
+      - description: >
+          Multi-monitor and fractional scaling work well.
+      - description: >
+          NVIDIA requires recent drivers and DRM modesetting.
+
+  # =================================================
+  # WLROOTS COMPOSITORS
+  # =================================================
+
+  wayland_wm:
+    question: >
+      wlroots compositors are powerful but DIY.
+      What do you care about most?
+    options:
+      p: "Performance and minimalism"
+      t: "Tiling workflow"
+      e: "Experimentation"
+    next:
+      p: wlroots_perf
+      t: wlroots_tile
+      e: wlroots_warn
+
+  wlroots_perf:
+    result:
+      - description: >
+          wlroots compositors are lightweight and fast.
+      - description: >
+          Examples:
+          - sway
+          - river
+          - hyprland
+      - description: >
+          Best suited for advanced users.
+
+  wlroots_tile:
+    result:
+      - description: >
+          Tiling Wayland compositors offer modern workflows.
+      - description: >
+          Configuration is code-based and manual.
+      - description: >
+          Expect more setup and less hand-holding.
+
+  wlroots_warn:
+    result:
+      - description: >
+          NVIDIA support is limited or experimental.
+      - description: >
+          Screen sharing and recording may break.
+      - description: >
+          Expect to debug issues yourself.
+
+  # =================================================
+  # NVIDIA CONSIDERATIONS
+  # =================================================
+
+  nvidia_note:
+    result:
+      - description: >
+          NVIDIA changes the decision significantly.
+      - description: >
+          Wayland requires:
+          - Driver 515+
+          - nvidia_drm.modeset=1
+      - description: >
+          If things break, X11 remains the safe fallback.
+
+  # =================================================
+  # FINAL RECOMMENDATION
+  # =================================================
+
+  final_advice:
+    result:
+      - description: >
+          There is no "wrong" choice.
+      - description: >
+          X11 = stability and control
+      - description: >
+          Wayland = security and future-proofing
+      - description: >
+          Lighthouse helps you choose based on *your* needs.

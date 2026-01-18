@@ -1,0 +1,169 @@
+start: log_goal
+
+nodes:
+  log_goal:
+    question: "What do you want to inspect in logs?"
+    options:
+      b: "Boot logs"
+      s: "Service logs"
+      k: "Kernel messages"
+      p: "Persistent logging"
+      f: "Filter or search logs"
+    next:
+      b: boot_logs
+      s: service_logs
+      k: kernel_logs
+      p: persistence
+      f: filtering
+    result: ""
+
+  # --- BOOT LOGS ---
+  boot_logs:
+    question: "Which boot?"
+    options:
+      c: "Current boot"
+      p: "Previous boot"
+      l: "List boots"
+    next:
+      c: boot_current
+      p: boot_previous
+      l: boot_list
+
+  boot_current:
+    result:
+      - "View logs from current boot:"
+      - "journalctl -b"
+
+  boot_previous:
+    result:
+      - "View logs from previous boot:"
+      - "journalctl -b -1"
+
+  boot_list:
+    result:
+      - "List available boots:"
+      - "journalctl --list-boots"
+      - "Use index with -b <index>"
+
+  # --- SERVICE LOGS ---
+  service_logs:
+    question: "Inspect specific service?"
+    options:
+      y: "Yes"
+      n: "No (all services)"
+    next:
+      y: service_specific
+      n: service_all
+
+  service_specific:
+    question: "Follow logs live?"
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: service_follow
+      n: service_static
+
+  service_follow:
+    result:
+      - "Follow logs in real time:"
+      - "journalctl -u SERVICE -f"
+
+  service_static:
+    result:
+      - "View service logs:"
+      - "journalctl -u SERVICE"
+      - "Add -b to restrict to current boot."
+
+  service_all:
+    result:
+      - "View all service logs:"
+      - "journalctl"
+      - "Use filtering to reduce noise."
+
+  # --- KERNEL LOGS ---
+  kernel_logs:
+    question: "What kernel messages?"
+    options:
+      b: "Boot-time messages"
+      r: "Runtime messages"
+    next:
+      b: kernel_boot
+      r: kernel_runtime
+
+  kernel_boot:
+    result:
+      - "Kernel messages from boot:"
+      - "journalctl -k -b"
+
+  kernel_runtime:
+    result:
+      - "View recent kernel messages:"
+      - "journalctl -k"
+      - "dmesg may show early messages not persisted."
+
+  # --- FILTERING & SEARCH ---
+  filtering:
+    question: "How do you want to filter logs?"
+    options:
+      t: "By time"
+      p: "By priority"
+      g: "By keyword"
+    next:
+      t: filter_time
+      p: filter_priority
+      g: filter_grep
+
+  filter_time:
+    result:
+      - "Filter by time range:"
+      - "journalctl --since \"1 hour ago\""
+      - "journalctl --since \"2024-01-01\" --until \"2024-01-02\""
+
+  filter_priority:
+    result:
+      - "Filter by priority:"
+      - "journalctl -p err"
+      - "Levels: emerg, alert, crit, err, warning, notice, info, debug"
+
+  filter_grep:
+    result:
+      - "Search logs for keywords:"
+      - "journalctl | grep keyword"
+      - "Or: journalctl -u SERVICE | grep error"
+
+  # --- PERSISTENCE ---
+  persistence:
+    question: "Are logs persistent across reboots?"
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: persistence_ok
+      n: enable_persistence
+
+  persistence_ok:
+    result:
+      - "Persistent logging is enabled."
+      - "Logs are stored on disk."
+
+  enable_persistence:
+    question: "Enable persistent logging?"
+    options:
+      y: "Yes"
+    next:
+      y: persistence_enable
+
+  persistence_enable:
+    result:
+      - "Enable persistent logging:"
+      - "mkdir -p /var/log/journal"
+      - "systemctl restart systemd-journald"
+
+  # --- MAINTENANCE ---
+  maintenance:
+    result:
+      - "Manage journal size:"
+      - "journalctl --disk-usage"
+      - "journalctl --vacuum-size=500M"
+      - "journalctl --vacuum-time=2weeks"

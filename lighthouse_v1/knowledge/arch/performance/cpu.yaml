@@ -1,0 +1,231 @@
+start: cpu_goal
+
+nodes:
+  cpu_goal:
+    question: >
+      CPU-related problems usually fall into performance,
+      power usage, or frequency scaling issues.
+      What best describes your concern?
+    options:
+      s: "The system feels slow"
+      p: "Power usage or heat is too high"
+      c: "CPU frequency or scaling behavior"
+    next:
+      s: slow_intro
+      p: power_intro
+      c: scaling_intro
+
+  # --- SYSTEM FEELS SLOW ---
+  slow_intro:
+    question: >
+      Slowness can be caused by CPU load,
+      I/O waits, or power-saving limits.
+      Is CPU usage consistently high?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: identify_process
+      n: governor_check
+
+  identify_process:
+    result:
+      - description: >
+          Identify CPU-heavy processes first.
+          This avoids unnecessary tuning.
+      - command: "top"
+      - command: "htop"
+      - description: >
+          Look for:
+          - One process using a full core
+          - Many processes competing for CPU
+          - Background services misbehaving
+      - description: >
+          High CPU usage is usually a software issue,
+          not a governor or kernel problem.
+
+  governor_check:
+    question: >
+      CPU governors control how aggressively
+      the CPU changes frequency.
+      Which governor is active?
+    options:
+      p: "performance"
+      s: "schedutil"
+      o: "powersave"
+      u: "Not sure"
+    next:
+      p: governor_perf
+      s: governor_schedutil
+      o: governor_powersave
+      u: governor_unknown
+
+  governor_perf:
+    result:
+      - description: >
+          performance keeps the CPU at high frequency.
+      - description: >
+          ✔ Best for benchmarks and latency-sensitive workloads
+          ✖ Higher power usage and heat
+      - description: >
+          Not recommended for laptops unless plugged in.
+
+  governor_schedutil:
+    result:
+      - description: >
+          schedutil is the modern default on Arch Linux.
+      - description: >
+          It integrates directly with the kernel scheduler.
+      - description: >
+          ✔ Good balance of performance and power
+          ✔ Recommended for most users (desktop and laptop)
+
+  governor_powersave:
+    result:
+      - description: >
+          powersave prioritizes energy efficiency.
+      - description: >
+          ✔ Lower power usage
+          ✖ Reduced performance under load
+      - description: >
+          Suitable for battery-focused laptop usage.
+
+  governor_unknown:
+    result:
+      - description: >
+          Check the active governor with:
+      - command: "cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor"
+      - description: >
+          You can change governors using power management tools.
+
+  # --- POWER USAGE / HEAT ---
+  power_intro:
+    question: >
+      Power management differs greatly between
+      laptops and desktops.
+      Which system are you using?
+    options:
+      l: "Laptop"
+      d: "Desktop"
+    next:
+      l: laptop_power
+      d: desktop_power
+
+  laptop_power:
+    question: >
+      Do you use a power management framework?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: laptop_tools_check
+      n: laptop_tools_intro
+
+  laptop_tools_intro:
+    result:
+      - description: >
+          Laptops benefit greatly from power management tools.
+      - description: >
+          Common options on Arch:
+          - TLP
+          - power-profiles-daemon
+      - description: >
+          ⚠ Do NOT run both at the same time.
+
+  laptop_tools_check:
+    result:
+      - description: >
+          Verify which tool is active:
+      - command: "systemctl status tlp"
+      - command: "systemctl status power-profiles-daemon"
+      - description: >
+          Only one should be enabled.
+
+  desktop_power:
+    result:
+      - description: >
+          Desktops usually do not need aggressive power management.
+      - description: >
+          Focus on:
+          - Adequate cooling
+          - Correct governor
+          - Background workloads
+      - description: >
+          Power tools may reduce performance without real benefit.
+
+  # --- CPU SCALING / FREQUENCY ---
+  scaling_intro:
+    question: >
+      CPU scaling problems usually mean
+      the frequency does not change as expected.
+      Is the CPU stuck at low or high frequency?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: scaling_diagnose
+      n: scaling_ok
+
+  scaling_ok:
+    result:
+      - description: >
+          If frequencies scale normally,
+          no tuning is required.
+      - description: >
+          Linux dynamically adjusts CPU frequency
+          based on workload and power policy.
+
+  scaling_diagnose:
+    question: >
+      Which CPU vendor are you using?
+    options:
+      i: "Intel"
+      a: "AMD"
+      o: "Other / Not sure"
+    next:
+      i: intel_scaling
+      a: amd_scaling
+      o: generic_scaling
+
+  intel_scaling:
+    result:
+      - description: >
+          Intel CPUs typically use:
+          - intel_pstate (modern CPUs)
+          - acpi-cpufreq (older CPUs)
+      - description: >
+          Verify driver:
+      - command: "cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_driver"
+      - description: >
+          intel_pstate works best with schedutil.
+
+  amd_scaling:
+    result:
+      - description: >
+          AMD CPUs typically use:
+          - amd_pstate (newer)
+          - acpi-cpufreq (older)
+      - description: >
+          Ensure kernel and microcode are up to date.
+      - description: >
+          schedutil is also recommended for AMD.
+
+  generic_scaling:
+    result:
+      - description: >
+          Ensure a CPU frequency driver is loaded.
+      - description: >
+          Check kernel messages:
+      - command: "dmesg | grep -i cpufreq"
+      - description: >
+          Missing drivers may indicate unsupported hardware
+          or disabled BIOS options.
+
+  finish_cpu:
+    result:
+      - description: >
+          Key takeaways:
+          - Identify software load before tuning
+          - schedutil is best for most users
+          - Use ONE power management tool
+          - Avoid premature optimization

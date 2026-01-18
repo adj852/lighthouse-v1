@@ -1,0 +1,266 @@
+start: pipewire_goal
+
+nodes:
+  pipewire_goal:
+    question: >
+      Hi 🙂 PipeWire is the modern audio and video server on Arch Linux.
+      It replaces PulseAudio and JACK, while using ALSA underneath.
+
+      What are you trying to fix or achieve?
+    options:
+      n: "No sound at all"
+      d: "Wrong output or input device is used"
+      p: "Low latency / pro audio / JACK replacement"
+      c: "Compatibility with PulseAudio or JACK apps"
+      s: "Sound works, but glitches, crackles, or stutters"
+      v: "I want to verify PipeWire is set up correctly"
+    next:
+      n: no_sound_check
+      d: device_issue_check
+      p: pro_audio_check
+      c: compatibility_check
+      s: stability_check
+      v: full_pipewire_verification
+
+  # =================================================
+  # FULL VERIFICATION (ARCH WIKI STYLE)
+  # =================================================
+
+  full_pipewire_verification:
+    result:
+      - description: >
+          Let's verify PipeWire exactly like the Arch Wiki recommends.
+      - description: >
+          Confirm PipeWire packages are installed:
+        command: "pacman -Qi pipewire pipewire-pulse wireplumber"
+      - description: >
+          Check PipeWire status:
+        command: "systemctl --user status pipewire"
+      - description: >
+          Check PulseAudio compatibility:
+        command: "systemctl --user status pipewire-pulse"
+      - description: >
+          Check session manager:
+        command: "systemctl --user status wireplumber"
+
+  # =================================================
+  # NO SOUND AT ALL
+  # =================================================
+
+  no_sound_check:
+    question: >
+      First, let's confirm PipeWire is running for your user.
+      Please check:
+        systemctl --user status pipewire
+
+      Is PipeWire active?
+    options:
+      y: "Yes, it is running"
+      n: "No, it is not running"
+    next:
+      y: wireplumber_check
+      n: enable_pipewire
+
+  enable_pipewire:
+    result:
+      - description: >
+          PipeWire must be enabled per-user (not system-wide).
+      - description: >
+          Enable PipeWire and PulseAudio compatibility:
+        command: "systemctl --user enable --now pipewire pipewire-pulse"
+
+  wireplumber_check:
+    question: >
+      PipeWire itself handles audio, but WirePlumber manages devices.
+      Without it, sound often does not work.
+
+      Is WirePlumber running?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: pipewire_audio_test
+      n: enable_wireplumber
+
+  enable_wireplumber:
+    result:
+      - description: >
+          Install and enable WirePlumber (required):
+        command: "sudo pacman -S wireplumber"
+      - description: >
+          Enable it for your user:
+        command: "systemctl --user enable --now wireplumber"
+
+  pipewire_audio_test:
+    question: >
+      PipeWire is running. Let's check if audio actually flows.
+
+      Can you hear sound when playing something (video, music)?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: alsa_backend_check
+      n: pipewire_logs_check
+
+  pipewire_logs_check:
+    result:
+      - description: >
+          Check PipeWire logs for errors:
+        command: "journalctl --user -u pipewire"
+      - description: >
+          Also check WirePlumber logs:
+        command: "journalctl --user -u wireplumber"
+      - description: >
+          Errors here often point to device or permission issues.
+
+  alsa_backend_check:
+    result:
+      - description: >
+          PipeWire uses ALSA underneath.
+          If ALSA is broken, PipeWire cannot work.
+      - description: >
+          Consider running the ALSA Lighthouse flow.
+
+  # =================================================
+  # DEVICE SELECTION
+  # =================================================
+
+  device_issue_check:
+    question: >
+      PipeWire can see multiple devices (HDMI, USB, headset).
+      Is the correct output device selected?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: device_ok
+      n: select_device
+
+  select_device:
+    result:
+      - description: >
+          Open PipeWire volume control:
+        command: "pavucontrol"
+      - description: >
+          Select the correct output and input device.
+      - description: >
+          Make sure the active application is routed
+          to the correct device.
+
+  device_ok:
+    result:
+      - description: >
+          The correct device is already selected.
+      - description: >
+          The issue may be application-specific
+          or related to ALSA underneath.
+
+  # =================================================
+  # STABILITY / GLITCHES
+  # =================================================
+
+  stability_check:
+    question: >
+      Are you experiencing crackling, stuttering, or dropouts?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: stability_fix
+      n: pipewire_wrapup
+
+  stability_fix:
+    result:
+      - description: >
+          Audio glitches are often caused by power saving
+          or aggressive scheduling.
+      - description: >
+          Try increasing PipeWire quantum:
+      - description: >
+          Edit:
+            ~/.config/pipewire/pipewire.conf.d/latency.conf
+      - description: |
+          context.properties = {
+            default.clock.quantum = 1024
+          }
+      - description: >
+          Restart PipeWire after changes:
+        command: "systemctl --user restart pipewire wireplumber"
+
+  # =================================================
+  # PRO AUDIO / JACK
+  # =================================================
+
+  pro_audio_check:
+    question: >
+      Do you need low-latency audio or JACK compatibility
+      (music production, DAWs)?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: pro_audio_tune
+      n: pro_audio_note
+
+  pro_audio_tune:
+    result:
+      - description: >
+          PipeWire fully replaces JACK.
+      - description: >
+          Enable JACK compatibility automatically
+          via pipewire-jack.
+      - description: >
+          Set low latency:
+      - description: |
+          default.clock.rate = 48000
+          default.clock.quantum = 128
+      - description: >
+          Use `pw-top` to monitor real-time performance.
+
+  pro_audio_note:
+    result:
+      - description: >
+          Default PipeWire settings are sufficient
+          for most users and desktop audio.
+
+  # =================================================
+  # COMPATIBILITY
+  # =================================================
+
+  compatibility_check:
+    question: >
+      Are you using older PulseAudio or JACK applications?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: compatibility_fix
+      n: compatibility_ok
+
+  compatibility_fix:
+    result:
+      - description: >
+          PipeWire provides compatibility layers automatically.
+      - description: >
+          Ensure PulseAudio replacement is active:
+        command: "systemctl --user status pipewire-pulse"
+      - description: >
+          JACK apps work via pipewire-jack without configuration.
+
+  compatibility_ok:
+    result:
+      - description: >
+          No compatibility issues detected.
+
+  # =================================================
+  # WRAP-UP
+  # =================================================
+
+  pipewire_wrapup:
+    result:
+      - description: >
+          PipeWire appears to be configured correctly.
+      - description: >
+          If issues remain, they are likely ALSA-level
+          or application-specific.

@@ -1,0 +1,312 @@
+start: alsa_scope
+
+nodes:
+  alsa_scope:
+    question: >
+      Hey 🙂 Let's get your sound working.
+      ALSA is the low-level sound system on Arch Linux.
+      If ALSA works, everything else (PipeWire, PulseAudio, desktops)
+      usually works too.
+
+      What best matches your problem?
+    options:
+      n: "No sound devices detected"
+      s: "Devices exist, but absolutely no sound"
+      m: "Muted, distorted, crackling, or very low volume"
+      c: "Wrong sound card or output is used"
+      h: "HDMI / DisplayPort / GPU audio issues"
+      u: "USB sound device or headset problems"
+      p: "Sound breaks after reboot or updates"
+      a: "I want to fully verify ALSA from scratch"
+    next:
+      n: no_devices_check
+      s: silent_check
+      m: muted_check
+      c: card_select_check
+      h: hdmi_audio_check
+      u: usb_audio_check
+      p: persistence_check
+      a: full_alsa_verification
+
+  # =================================================
+  # FULL VERIFICATION
+  # =================================================
+
+  full_alsa_verification:
+    result:
+      - description: >
+          Let's verify ALSA step by step, exactly like the Arch Wiki suggests.
+      - description: >
+          Make sure ALSA utilities are installed:
+        command: "pacman -Qi alsa-utils"
+      - description: >
+          Check detected audio controllers:
+        command: "lspci | grep -i audio"
+      - description: >
+          List ALSA sound cards:
+        command: "aplay -l"
+      - description: >
+          Open ALSA mixer:
+        command: "alsamixer"
+
+  # =================================================
+  # NO DEVICES DETECTED
+  # =================================================
+
+  no_devices_check:
+    question: >
+      Please run:
+        aplay -l
+
+      Do you see any sound cards listed?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: silent_check
+      n: no_devices_missing
+
+  no_devices_missing:
+    question: >
+      ALSA sees no devices.
+      This usually means a kernel driver or firmware issue.
+
+      What type of system are you using?
+    options:
+      l: "Laptop"
+      d: "Desktop"
+    next:
+      l: laptop_driver_check
+      d: desktop_driver_check
+
+  laptop_driver_check:
+    result:
+      - description: >
+          Most laptops use Intel HDA or SOF audio.
+      - description: >
+          Check detected audio hardware:
+        command: "lspci | grep -i audio"
+      - description: >
+          Check kernel logs:
+        command: "dmesg | grep -iE 'snd|sof|hda|audio'"
+      - description: >
+          If you see SOF-related errors, install firmware:
+        command: "sudo pacman -S sof-firmware"
+      - description: >
+          Reboot after installing firmware.
+
+  desktop_driver_check:
+    result:
+      - description: >
+          Desktop audio often comes from motherboard audio or GPU HDMI.
+      - description: >
+          Check loaded ALSA modules:
+        command: "lsmod | grep snd"
+      - description: >
+          If no snd modules appear, ensure alsa-utils is installed
+          and reboot.
+
+  # =================================================
+  # DEVICES PRESENT BUT SILENT
+  # =================================================
+
+  silent_check:
+    question: >
+      ALSA sees devices, but no sound is heard.
+
+      Let's test raw ALSA output directly.
+      Please run:
+        speaker-test -c 2
+
+      Do you hear sound?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: userspace_audio_check
+      n: muted_check
+
+  # =================================================
+  # MIXER / VOLUME
+  # =================================================
+
+  muted_check:
+    question: >
+      ALSA does not automatically manage volume.
+      Many systems start muted by default.
+
+      Open the mixer:
+        alsamixer
+
+      Do you see 'MM' (muted) on any important channels?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: muted_fix
+      n: channel_check
+
+  muted_fix:
+    result:
+      - description: >
+          Use arrow keys to raise volume.
+          Press 'M' to unmute (MM → OO).
+      - description: >
+          Focus on Master, PCM, Speaker, Headphone.
+        command: "alsamixer"
+      - description: >
+          Save working state:
+        command: "sudo alsactl store"
+
+  channel_check:
+    question: >
+      ALSA mixers can show multiple sound cards.
+
+      Press F6 in alsamixer.
+      Did switching cards fix the issue?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: persistence_hint
+      n: userspace_audio_check
+
+  # =================================================
+  # USERSPACE AUDIO (PIPEWIRE / PULSE)
+  # =================================================
+
+  userspace_audio_check:
+    question: >
+      ALSA works underneath, but desktops use PipeWire or PulseAudio.
+
+      What are you using?
+    options:
+      p: "PipeWire"
+      u: "PulseAudio"
+      i: "I'm not sure"
+    next:
+      p: pipewire_check
+      u: pulseaudio_check
+      i: pipewire_check
+
+  pipewire_check:
+    result:
+      - description: >
+          Check PipeWire services:
+        command: "systemctl --user status pipewire"
+      - description: >
+          Check session manager:
+        command: "systemctl --user status wireplumber"
+      - description: >
+          Restart if necessary:
+        command: "systemctl --user restart pipewire wireplumber"
+
+  pulseaudio_check:
+    result:
+      - description: >
+          Check PulseAudio:
+        command: "pulseaudio --check"
+      - description: >
+          Restart PulseAudio:
+        command: "pulseaudio -k"
+
+  # =================================================
+  # CARD SELECTION
+  # =================================================
+
+  card_select_check:
+    question: >
+      Do you have multiple sound cards (HDMI, USB, headset)?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: card_select_fix
+      n: persistence_hint
+
+  card_select_fix:
+    result:
+      - description: >
+          Identify sound cards:
+        command: "aplay -l"
+      - description: >
+          ALSA may use the wrong default card.
+      - description: >
+          Set default in ~/.asoundrc:
+      - description: |
+          pcm.!default {
+            type hw
+            card 0
+          }
+      - description: >
+          Replace card number as needed.
+
+  # =================================================
+  # HDMI / GPU AUDIO
+  # =================================================
+
+  hdmi_audio_check:
+    result:
+      - description: >
+          HDMI audio depends on GPU drivers.
+      - description: >
+          Verify HDMI device exists:
+        command: "aplay -l"
+      - description: >
+          Select HDMI device in alsamixer (F6)
+          or PipeWire volume control.
+
+  # =================================================
+  # USB AUDIO
+  # =================================================
+
+  usb_audio_check:
+    result:
+      - description: >
+          Plug in the USB device and re-check:
+        command: "aplay -l"
+      - description: >
+          Some USB devices require PipeWire/PulseAudio
+          even though ALSA handles the backend.
+
+  # =================================================
+  # PERSISTENCE
+  # =================================================
+
+  persistence_check:
+    question: >
+      Does sound stop working after reboot or updates?
+    options:
+      y: "Yes"
+      n: "No"
+    next:
+      y: persistence_fix
+      n: alsa_wrapup
+
+  persistence_fix:
+    result:
+      - description: >
+          ALSA settings are not saved automatically.
+      - description: >
+          Save current mixer state:
+        command: "sudo alsactl store"
+      - description: >
+          Enable restore service:
+        command: "sudo systemctl enable alsa-restore"
+
+  persistence_hint:
+    result:
+      - description: >
+          Saving ALSA state prevents surprises after reboot.
+
+  # =================================================
+  # WRAP-UP
+  # =================================================
+
+  alsa_wrapup:
+    result:
+      - description: >
+          ALSA appears to be working correctly.
+      - description: >
+          Any remaining issues are likely in higher-level
+          audio routing or desktop configuration.
